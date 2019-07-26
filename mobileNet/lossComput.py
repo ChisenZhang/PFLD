@@ -179,6 +179,7 @@ def rerec(bboxA):
 
 
 def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
+    gBoxes = np.array(gBoxes)
     ious = compute_iou_np(anchors, gBoxes)
     # 每个anchor的最大IOU及index
     # max_iou, max_iou_ids = np.max(ious, axis=0), np.argmax(ious, axis=0)
@@ -205,7 +206,7 @@ def smooth_L1_loss(y_true, y_pred):
     return tf.reduce_sum(l1_loss, axis=-1)
 
 def focal_loss(targets, plogits):
-    alpha_factor = np.ones(targets.shape[0], dtype=np.float) * alpha
+    alpha_factor = np.ones(targets.shape[0], dtype=np.float32) * alpha
     alpha_factor = tf.where(targets[:, 1] == 1., alpha_factor, 1. - alpha_factor)
     focal_weight = tf.where(targets[:, 1] == 1., 1. - tf.nn.softmax(plogits)[:, 1], tf.nn.softmax(plogits)[:, 1])
     focal_weight = alpha_factor * tf.pow(focal_weight, gamma)
@@ -213,63 +214,78 @@ def focal_loss(targets, plogits):
     cls_loss = tf.reduce_sum(focal_weight * bce)
     return cls_loss
 
-def faceDetLoss(plogits, pBoxes, anchors, gBoxes, pAttention=None, match_threshold=0.5,
+def faceDetLoss(plogits, pBoxes, anchors, gBoxes, batch_size=32, pAttention=None, match_threshold=0.5,
                 negative_ratio=3., scope='faceDetLoss'):
     with tf.name_scope(scope):
-        pos_inds, targets, assertBoxes = anchorFillter(anchors, gBoxes, maxThresh=match_threshold)
-        cls_loss = focal_loss(targets, plogits)
+        loss = 0.
+        for k in range(batch_size):
+            pos_inds, targets, assertBoxes = anchorFillter(anchors, gBoxes[k], maxThresh=match_threshold)
+            cls_loss = focal_loss(targets, plogits[k])
 
-        l1_loss = 0.
-        if len(pos_inds) > 0:
-            assAnchors = anchors[pos_inds]
-            # classes = tf.nn.softmax(plogits)
-            # probs = classes[tuple(pos_inds), 1]
-            pBoxes = pBoxes[pos_inds]
-            diff = (assertBoxes - assAnchors)
-            diff[:, 0] /= assAnchors[:, 2]
-            diff[:, 1] /= assAnchors[:, 3]
-            diff[:, 2] /= assAnchors[:, 2]
-            diff[:, 3] /= assAnchors[:, 3]
-            l1_loss = tf.where(tf.abs(diff - pBoxes) < 1, 0.5*tf.pow(diff - pBoxes, 2),
-                               tf.abs(diff - pBoxes) - 0.5)
-            l1_loss = tf.reduce_sum(l1_loss)
+            l1_loss = 0.
+            if pos_inds.size > 0:
+                assAnchors = anchors[pos_inds]
+                # classes = tf.nn.softmax(plogits)
+                # probs = classes[tuple(pos_inds), 1]
+                pos_inds.dtype = 'int32'
+                pBoxes = pBoxes[k, pos_inds]
+                diff = (assertBoxes - assAnchors)
+                diff[:, 0] /= assAnchors[:, 2]
+                diff[:, 1] /= assAnchors[:, 3]
+                diff[:, 2] /= assAnchors[:, 2]
+                diff[:, 3] /= assAnchors[:, 3]
+                l1_loss = tf.where(tf.abs(diff - pBoxes) < 1, 0.5*tf.pow(diff - pBoxes, 2),
+                                   tf.abs(diff - pBoxes) - 0.5)
+                l1_loss = tf.reduce_sum(l1_loss)
 
-        attLoss = 0.
-        if pAttention is not None:
-            for i in range(len(pAttention)):
-                attention_gt = np.zeros(pAttention[i].shape)
-                attW, attH = pAttention[i].shape
-                for box in gBoxes:
-                    x1 = box[0] - box[2]/2
-                    y1 = box[1] - box[3]/2
-                    x2 = min(math.ceil(box[0] + box[2]/2) + 1, attention_gt.shape[0])
-                    y2 = min(math.ceil(box[1] + box[3]/2) + 1, attention_gt.shape[1])
-                    attention_gt[max(int(y1*attH), 0):min(math.ceil(y2*attH), attH),
-                                    max(int(x1*attW), 0):min(math.ceil(x2*attW), attW)] = 1
-                attLoss += tf.nn.sigmoid_cross_entropy_with_logits(pAttention, attention_gt, name='attLoss')
+            attLoss = 0.
+            if pAttention is not None:
+                for i in range(len(pAttention)):
+                    attention_gt = np.zeros(pAttention[i][k].shape, dtype=np.float32)
+                    if i == 0:
+                        attW = 16
+                        attH = 16
+                    elif i == 1:
+                        attW = 8
+                        attH = 8
+                    else:
+                        print('attention loss error:', pAttention.shape)
+                        exit(-1)
 
-        loss = cls_loss + l1_loss + attLoss
+                    # attW, attH, _ = pAttention[i][k].shape
+                    for box in gBoxes[k]:
+                        x1 = box[0] - box[2]/2
+                        y1 = box[1] - box[3]/2
+                        x2 = min(math.ceil(box[0] + box[2]/2) + 1, attention_gt.shape[0])
+                        y2 = min(math.ceil(box[1] + box[3]/2) + 1, attention_gt.shape[1])
+                        attention_gt[max(int(y1*attH), 0):min(math.ceil(y2*attH), attH),
+                                        max(int(x1*attW), 0):min(math.ceil(x2*attW), attW)] = 1
+                    attLoss += tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i][k],
+                                                                                     labels=attention_gt, name='attLoss'))
 
-        return loss
+            loss += cls_loss + l1_loss + attLoss
+
+        return loss/float(batch_size)
 
 if __name__ == '__main__':
-    anchors = np.zeros(shape=(25, 4), dtype=np.float)
-    boxes = np.ones((30, 4), dtype=np.float)
-    gBoxes = np.ones((3, 4), dtype=np.float)
-    plogits = np.zeros(shape=[25, 2], dtype=np.float)
+    anchors = np.zeros(shape=(25, 4), dtype=np.float32)
+    boxes = np.ones((1, 25, 4), dtype=np.float32)
+    gBoxes = np.ones((1, 3, 4), dtype=np.float32)
+    plogits = np.zeros(shape=[1, 25, 2], dtype=np.float32)
     import random
     for i in range(30):
         for j in range(4):
             if i < 3:
-                gBoxes[i][j] = random.random()
+                gBoxes[0][i][j] = random.random()
             if i >= 25:
-                boxes[i][j] = random.random()
+                pass
+                # boxes[0][i][j] = random.random()
             else:
-                boxes[i][j] = random.random()
+                boxes[0][i][j] = random.random()
                 anchors[i][j] = random.random()
                 if j == 0:
-                    plogits[i][0] = random.random()
-                    plogits[i][1] = 1 - plogits[i][0]
-
+                    plogits[0][i][0] = random.random()
+                    plogits[0][i][1] = 1 - plogits[0][i][0]
+    boxes = tf.constant(boxes.tolist())
     # anchorFillter(anchors, boxes)
-    faceDetLoss(plogits, boxes, anchors, gBoxes, match_threshold=0.)
+    faceDetLoss(plogits, boxes, anchors, gBoxes, match_threshold=0., batch_size=1)

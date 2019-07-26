@@ -123,10 +123,9 @@ if __name__ == '__main__':
     print('train_wideFaceNum:', len(train_data))
 
     print('Building model...')
-    x = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
+    # x = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
     fd_model = MobileNetV2(num_classes=2)
-    fd_model = fd_model.blazeModel(x=x)
-    gBoxes = tf.placeholder(dtype=tf.float32, shape=[None, len(anchors), 4])
+    fd_model.blazeModel()
 
     print('Num params: ', count_number_trainable_params())
 
@@ -176,8 +175,8 @@ if __name__ == '__main__':
 
                 print('Iteration ', i, ' ', end='\r')
                 i += 1
-                loss = faceDetLoss(fd_model.cls, fd_model.reg, anchors, lbls, fd_model.attention)
-                loss = sess.run([loss], feed_dict={x: imgs})
+
+                loss = fd_model.getTrainLoss(sess, imgs, anchors, lbls)
                 train_loss.append(loss)
                 # train_mAP_pred.append(mAP)
                 # writer.add_summary(summary, i)

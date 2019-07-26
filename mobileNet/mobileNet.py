@@ -8,6 +8,7 @@ mobileNetV2网络结构
 import tensorflow as tf
 # import numpy as np
 # import time
+from lossComput import faceDetLoss
 
 training_backBone = True
 training_FaceDetection = True
@@ -15,6 +16,7 @@ training_LandMark = False
 
 class MobileNetV2(object):
     def __init__(self, num_classes=2, training=True):
+        self.input = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
         self.num_classes = num_classes
         self.training = training
         self.index = 0
@@ -77,9 +79,9 @@ class MobileNetV2(object):
             self.logits = tf.reshape(output, shape=[-1, self.num_classes], name="logit")
             self.prob = tf.nn.softmax(self.logits, name='prob')
 
-    def blazeModel(self, x):
+    def blazeModel(self):
         with tf.variable_scope('BlazeNet'):
-            output = tf.layers.conv2d(inputs=x,
+            output = tf.layers.conv2d(inputs=self.input,
                                       filters=16,
                                       kernel_size=5,
                                       strides=2,
@@ -339,8 +341,15 @@ class MobileNetV2(object):
             reg = tf.reshape(reg, shape=[-1, anchors, 4], name='reg')
             return cls, reg
 
+    # 返回loss
+    def getTrainLoss(self, sess, imgs, anchors, gBoxes):
+        loss = faceDetLoss(self.cls, self.reg, anchors=anchors, gBoxes=gBoxes, pAttention=self.attention)
+        loss = sess.run([loss], feed_dict={self.input: imgs, self.training: True})
+        return loss
+
+
 if __name__ == '__main__':
     x = tf.placeholder('float', shape=[None, 256, 256, 3], name='x')
     net = MobileNetV2(2)
-    net.blazeModel(x)
+    net.blazeModel()
     print('abc')
