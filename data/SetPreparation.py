@@ -1,11 +1,11 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import os
 import numpy as np
 import cv2
 import shutil
 
 debug = False
-#debug = True
+# debug = True
 
 from euler_angles_utils import calculate_pitch_yaw_roll
 
@@ -13,7 +13,7 @@ def rotate(angle, center, landmark):
     rad = angle * np.pi / 180.0
     alpha = np.cos(rad)
     beta = np.sin(rad)
-    M = np.zeros((2,3), dtype=np.float32)
+    M = np.zeros((2, 3), dtype=np.float32)
     M[0, 0] = alpha
     M[0, 1] = beta
     M[0, 2] = (1-alpha)*center[0] - beta*center[1]
@@ -21,8 +21,8 @@ def rotate(angle, center, landmark):
     M[1, 1] = alpha
     M[1, 2] = beta*center[0] + (1-alpha)*center[1]
 
-    landmark_ = np.asarray([(M[0,0]*x+M[0,1]*y+M[0,2],
-                             M[1,0]*x+M[1,1]*y+M[1,2]) for (x,y) in landmark])
+    landmark_ = np.asarray([(M[0, 0] * x + M[0, 1] * y + M[0, 2],
+                             M[1, 0] * x + M[1, 1] * y + M[1, 2]) for (x, y) in landmark])
     return M, landmark_
 
 class ImageDate():
@@ -40,7 +40,7 @@ class ImageDate():
         assert(len(line) == 207)
         self.list = line
         self.landmark = np.asarray(list(map(float, line[:196])), dtype=np.float32).reshape(-1, 2)
-        self.box = np.asarray(list(map(int, line[196:200])),dtype=np.int32)
+        self.box = np.asarray(list(map(int, line[196:200])), dtype=np.int32)
         flag = list(map(int, line[200:206]))
         flag = list(map(bool, flag))
         self.pose = flag[0]
@@ -57,7 +57,7 @@ class ImageDate():
         self.boxes = []
 
     def load_data(self, is_train, repeat, mirror=None):
-        if (mirror is not None):
+        if mirror is not None:
             with open(mirror, 'r') as f:
                 lines = f.readlines()
                 assert len(lines) == 1
@@ -85,7 +85,7 @@ class ImageDate():
         y2 = min(height, y2)
 
         imgT = img[y1:y2, x1:x2]
-        if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
+        if dx > 0 or dy > 0 or edx > 0 or edy > 0:
             imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
         if imgT.shape[0] == 0 or imgT.shape[1] == 0:
             imgTT = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -108,7 +108,7 @@ class ImageDate():
                 cx, cy = center
                 cx = cx + int(np.random.randint(-boxsize*0.1, boxsize*0.1))
                 cy = cy + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
-                M, landmark = rotate(angle, (cx,cy), self.landmark)
+                M, landmark = rotate(angle, (cx, cy), self.landmark)
 
                 imgT = cv2.warpAffine(img, M, (int(img.shape[1]*1.1), int(img.shape[0]*1.1)))
                 wh = np.ptp(landmark, axis=0).astype(np.int32) + 1
@@ -132,17 +132,18 @@ class ImageDate():
                 y2 = min(height, y2)
 
                 imgT = imgT[y1:y2, x1:x2]
-                if (dx > 0 or dy > 0 or edx >0 or edy > 0):
+                if dx > 0 or dy > 0 or edx > 0 or edy > 0:
                     imgT = cv2.copyMakeBorder(imgT, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
 
                 imgT = cv2.resize(imgT, (self.image_size, self.image_size))
 
                 if mirror is not None and np.random.choice((True, False)):
-                    landmark[:,0] = 1 - landmark[:,0]
+                    landmark[:, 0] = 1 - landmark[:, 0]
                     landmark = landmark[mirror_idx]
                     imgT = cv2.flip(imgT, 1)
                 self.imgs.append(imgT)
                 self.landmarks.append(landmark)
+
     def save_data(self, path, prefix):
         attributes = [self.pose, self.expression, self.illumination, self.make_up, self.occlusion, self.blur]
         attributes = np.asarray(attributes, dtype=np.int32)
@@ -163,13 +164,15 @@ class ImageDate():
             euler_angles = np.asarray((pitch, yaw, roll), dtype=np.float32)
             euler_angles_str = ' '.join(list(map(str, euler_angles)))
 
-            landmark_str = ' '.join(list(map(str,lanmark.reshape(-1).tolist())))
+            landmark_str = ' '.join(list(map(str, lanmark.reshape(-1).tolist())))
 
             label = '{} {} {} {}\n'.format(save_path, landmark_str, attributes_str, euler_angles_str)
             labels.append(label)
         return labels
+
+
 def get_dataset_list(imgDir, outDir, landmarkDir, is_train):
-    with open(landmarkDir,'r') as f:
+    with open(landmarkDir, 'r') as f:
         lines = f.readlines()
         labels = []
         save_img = os.path.join(outDir, 'imgs')
@@ -189,9 +192,10 @@ def get_dataset_list(imgDir, outDir, landmarkDir, is_train):
             if ((i + 1) % 100) == 0:
                 print('file: {}/{}'.format(i+1, len(lines)))
 
-    with open(os.path.join(outDir, 'list.txt'),'w') as f:
+    with open(os.path.join(outDir, 'list.txt'), 'w') as f:
         for label in labels:
             f.writelines(label)
+
 
 if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.realpath(__file__))
@@ -212,7 +216,7 @@ if __name__ == '__main__':
             is_train = False
         else:
             is_train = True
-        imgs = get_dataset_list(imageDirs, outDir, landmarkDir, is_train)
+        get_dataset_list(imageDirs, outDir, landmarkDir, is_train)
     print('end')
 
 

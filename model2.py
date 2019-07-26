@@ -388,7 +388,7 @@ def pfld_inference(input, weight_decay, batch_norm_params):
             s3 = slim.flatten(conv8)
             multi_scale = tf.concat([s1,s2,s3],1)
             landmarks = slim.fully_connected(multi_scale,num_outputs=196,activation_fn=None,scope='fc')
-            return features ,landmarks
+            return features, landmarks
 
 def create_model(input, landmark, phase_train, args):
     batch_norm_params = {
@@ -400,7 +400,7 @@ def create_model(input, landmark, phase_train, args):
     }
 
     landmark_dim = int(landmark.get_shape()[-1])
-    features ,landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params)
+    features, landmarks_pre = pfld_inference(input, args.weight_decay, batch_norm_params)
     # loss
     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
     landmarks_loss = tf.reduce_mean(landmarks_loss)

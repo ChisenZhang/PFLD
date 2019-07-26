@@ -88,11 +88,11 @@ def main(args):
 
         attributes_w_n = tf.to_float(attribute_batch[:, 1:6])
         # _num = attributes_w_n.shape[0]
-        mat_ratio = tf.reduce_mean(attributes_w_n,axis=0)  
-        mat_ratio = tf.map_fn(lambda x:(tf.cond(x > 0,lambda: 1/x,lambda:float(args.batch_size))),mat_ratio)      
+        mat_ratio = tf.reduce_mean(attributes_w_n, axis=0)
+        mat_ratio = tf.map_fn(lambda x: (tf.cond(x > 0, lambda: 1 / x, lambda: float(args.batch_size))), mat_ratio)
         attributes_w_n = tf.convert_to_tensor(attributes_w_n * mat_ratio)
-        attributes_w_n = tf.reduce_sum(attributes_w_n,axis=1)
-        list_ops['attributes_w_n_batch']=attributes_w_n                                                                                
+        attributes_w_n = tf.reduce_sum(attributes_w_n, axis=1)
+        list_ops['attributes_w_n_batch'] = attributes_w_n
                                                                               
         L2_loss = tf.add_n(tf.losses.get_regularization_losses())
         _sum_k = tf.reduce_sum(tf.map_fn(lambda x: 1 - tf.cos(abs(x)), euler_angles_gt_batch - euler_angles_pre), axis=1)
@@ -131,7 +131,7 @@ def main(args):
             epoch_start = 0
             if args.pretrained_model:
                 pretrained_model = args.pretrained_model
-                if (not os.path.isdir(pretrained_model)):
+                if not os.path.isdir(pretrained_model):
                     print('Restoring pretrained model: {}'.format(pretrained_model))
                     saver.restore(sess, args.pretrained_model)
                 else:
@@ -180,7 +180,7 @@ def train(sess, epoch_size, epoch, list_ops):
     image_batch, landmarks_batch, attribute_batch, euler_batch = list_ops['train_next_element']
 
     for i in range(epoch_size):
-        #TODO : get the w_n and euler_angles_gt_batch
+        # TODO : get the w_n and euler_angles_gt_batch
         images, landmarks, attributes, eulers = sess.run([image_batch, landmarks_batch, attribute_batch, euler_batch])
 
         '''
@@ -193,7 +193,7 @@ def train(sess, epoch_size, epoch, list_ops):
         #205: 模糊(blur)         0->清晰(clear)                    1->模糊(blur)
         '''
        
-        attributes_w_n = sess.run(list_ops['attributes_w_n_batch'],feed_dict={list_ops['image_batch']: images,
+        attributes_w_n = sess.run(list_ops['attributes_w_n_batch'], feed_dict={list_ops['image_batch']: images,
                                                                               list_ops['attribute_batch']: attributes})
 
         feed_dict = {
@@ -201,7 +201,7 @@ def train(sess, epoch_size, epoch, list_ops):
             list_ops['landmark_batch']: landmarks,
             list_ops['attribute_batch']: attributes,
             list_ops['phase_train_placeholder']: True,
-            list_ops['euler_angles_gt_batch'] : eulers,
+            list_ops['euler_angles_gt_batch']: eulers,
             list_ops['attributes_w_n_batch']: attributes_w_n
         }
         loss, _, lr, L2_loss = sess.run([list_ops['loss'], list_ops['train_op'], list_ops['lr_op'],\
@@ -288,12 +288,13 @@ def test(sess, list_ops, args):
     
 def heatmap2landmark(heatmap):
     landmark = []
-    h,w,c = heatmap.shape
+    h, w, c = heatmap.shape
     for i in range(c):
-        m,n=divmod(np.argmax(heatmap[i]),w)
+        m, n = divmod(np.argmax(heatmap[i]), w)
         landmark.append(n/w)
         landmark.append(m/h)
     return landmark
+
 def save_image_example(sess, list_ops, args):
     save_nbatch = 10
     save_path = os.path.join(args.model_dir, 'image_example')
@@ -320,9 +321,9 @@ def save_image_example(sess, list_ops, args):
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--file_list', type=str,default='data/train_data/list.txt')
+    parser.add_argument('--file_list', type=str, default='data/train_data/list.txt')
     parser.add_argument('--test_list', type=str, default='data/test_data/list.txt')
-    parser.add_argument('--seed',type=int, default=666)
+    parser.add_argument('--seed', type=int, default=666)
     parser.add_argument('--max_epoch', type=int, default=1000)
     parser.add_argument('--image_size', type=int, default=112)
     parser.add_argument('--image_channels', type=int, default=3)
@@ -333,7 +334,7 @@ def parse_arguments(argv):
     parser.add_argument('--lr_epoch', type=str, default='10,20,30,40,200,500')
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--level', type=str, default='L5')
-    parser.add_argument('--save_image_example',action='store_false')
+    parser.add_argument('--save_image_example', action='store_false')
     parser.add_argument('--debug', type=str, default='False')
     return parser.parse_args(argv)
 

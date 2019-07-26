@@ -209,7 +209,7 @@ class PnpHeadPoseEstimator:
              pose_mat = cv2.hconcat((rmat,tvec))
              #euler_angles contain (pitch, yaw, roll)
              # euler_angles = cv2.DecomposeProjectionMatrix(projMatrix=rmat, cameraMatrix=self.camera_matrix, rotMatrix, transVect, rotMatrX=None, rotMatrY=None, rotMatrZ=None)
-             _, _, _, _, _, _,euler_angles = cv2.decomposeProjectionMatrix(pose_mat)
+             _, _, _, _, _, _, euler_angles = cv2.decomposeProjectionMatrix(pose_mat)
              return list(euler_angles)
 
              head_pose = [ rmat[0,0], rmat[0,1], rmat[0,2], tvec[0],
