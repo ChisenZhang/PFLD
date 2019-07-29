@@ -20,6 +20,8 @@ class MobileNetV2(object):
         self.num_classes = num_classes
         self.training = training
         self.index = 0
+        self.anchors = None
+        self.gBoxes = None
 
     def model(self, x):
         with tf.variable_scope('MobileNet'):
@@ -343,8 +345,10 @@ class MobileNetV2(object):
 
     # 返回loss
     def getTrainLoss(self, sess, imgs, anchors, gBoxes):
-        loss = faceDetLoss(self.cls, self.reg, anchors=anchors, gBoxes=gBoxes, pAttention=self.attention)
-        loss = sess.run([loss], feed_dict={self.input: imgs, self.training: True})
+        self.anchors = anchors
+        self.gBoxes = gBoxes
+        self.loss = faceDetLoss(self.cls, self.reg, anchors=self.anchors, gBoxes=self.gBoxes, pAttention=self.attention)
+        loss = sess.run([self.loss], feed_dict={self.input: imgs, self.training: True})
         return loss
 
 

@@ -175,8 +175,9 @@ if __name__ == '__main__':
 
                 print('Iteration ', i, ' ', end='\r')
                 i += 1
-
-                loss = fd_model.getTrainLoss(sess, imgs, anchors, lbls)
+                # tmpLoss = faceDetLoss(fd_model.cls, fd_model.reg, anchors=anchors, gBoxes=lbls, pAttention=fd_model.attention)
+                # loss = sess.run([tmpLoss], feed_dict={fd_model.input: imgs, })
+                loss = fd_model.getTrainLoss(sess, np.array(imgs), anchors, lbls)
                 train_loss.append(loss)
                 # train_mAP_pred.append(mAP)
                 # writer.add_summary(summary, i)

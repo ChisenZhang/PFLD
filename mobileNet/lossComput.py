@@ -192,8 +192,8 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
 
     targets[max_obj_iou < minThresh] = 0
     pos_inds = np.where(max_obj_iou >= maxThresh)
-    pos_inds = np.squeeze(pos_inds)
-    assertBoxes = gBoxes[max_obj_iou_ids]
+    # pos_inds = np.squeeze(pos_inds)
+    assertBoxes = gBoxes[max_obj_iou_ids][pos_inds]
     targets[pos_inds] = 0
     targets[pos_inds, 1] = 1
 
@@ -223,19 +223,20 @@ def faceDetLoss(plogits, pBoxes, anchors, gBoxes, batch_size=32, pAttention=None
             cls_loss = focal_loss(targets, plogits[k])
 
             l1_loss = 0.
-            if pos_inds.size > 0:
+            if len(pos_inds) > 0:
                 assAnchors = anchors[pos_inds]
+                # assBoxes = np.array(gBoxes[k])[pos_inds]
                 # classes = tf.nn.softmax(plogits)
                 # probs = classes[tuple(pos_inds), 1]
-                pos_inds.dtype = 'int32'
-                pBoxes = pBoxes[k, pos_inds]
                 diff = (assertBoxes - assAnchors)
                 diff[:, 0] /= assAnchors[:, 2]
                 diff[:, 1] /= assAnchors[:, 3]
                 diff[:, 2] /= assAnchors[:, 2]
                 diff[:, 3] /= assAnchors[:, 3]
-                l1_loss = tf.where(tf.abs(diff - pBoxes) < 1, 0.5*tf.pow(diff - pBoxes, 2),
-                                   tf.abs(diff - pBoxes) - 0.5)
+
+                tmpBoxes = tf.gather(pBoxes[k], np.squeeze(pos_inds), axis=0)
+                l1_loss = tf.where(tf.abs(diff - tmpBoxes) < 1, 0.5*tf.pow(diff - tmpBoxes, 2),
+                                   tf.abs(diff - tmpBoxes) - 0.5)
                 l1_loss = tf.reduce_sum(l1_loss)
 
             attLoss = 0.
