@@ -198,21 +198,22 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
     # pos_inds = np.squeeze(pos_inds)
     targets[pos_inds] = 1
 
-    assertBoxes = gBoxes[max_obj_iou_ids][pos_inds]
-    assertAnchors = anchors[pos_inds]
+    if pos_inds[0].size > 0:
+        assertBoxes = gBoxes[max_obj_iou_ids][pos_inds]
+        assertAnchors = anchors[pos_inds]
 
-    aC = np.array(assertAnchors[:, 2:] + assertAnchors[:, :2]).astype(np.float32)/2
-    aWH = np.array(assertAnchors[:, 2:] - assertAnchors[:, :2]).astype(np.float32)
+        aC = np.array(assertAnchors[:, 2:] + assertAnchors[:, :2]).astype(np.float32)/2
+        aWH = np.array(assertAnchors[:, 2:] - assertAnchors[:, :2]).astype(np.float32)
 
-    bC = np.array(assertBoxes[: 2:] + assertBoxes[:, 2:]).astype(np.float32)/2
-    bWH = np.array(assertBoxes[:, 2:] - assertBoxes[:, :2]).astype(np.float32)
+        bC = np.array(assertBoxes[:, 2:] + assertBoxes[:, :2]).astype(np.float32)/2
+        bWH = np.array(assertBoxes[:, 2:] - assertBoxes[:, :2]).astype(np.float32)
 
-    cxy = (bC - aC) / aWH
-    wh = np.log(bWH / aWH)
+        cxy = (bC - aC) / aWH
+        wh = np.log(bWH / aWH)
 
-    out = np.concatenate((cxy, wh), axis=-1)
+        out = np.concatenate((cxy, wh), axis=-1)
 
-    locs[pos_inds] = out
+        locs[pos_inds] = out
 
     return locs, np.squeeze(targets)
 
@@ -232,9 +233,11 @@ def smooth_L1_loss(y_true, y_pred):
     return tf.reduce_sum(l1_loss, axis=-1)
 
 def generateAttentionMap(batch_size, shapes, gBoxes):
-    attentions = []
+    attentions1 = []
+    attentions2 = []
     for k in range(batch_size):
-        tmpAttention = []
+        tmpAttention1 = []
+        tmpAttention2 = []
         for i in range(len(shapes)):
             fmShape = shapes[i]
             attention_gt = np.zeros(fmShape, dtype=np.float32)
@@ -248,9 +251,13 @@ def generateAttentionMap(batch_size, shapes, gBoxes):
                 y2 = min(math.ceil(box[1] + box[3] / 2) + 1, attention_gt.shape[1])
                 attention_gt[max(int(y1 * attH), 0):min(math.ceil(y2 * attH), attH),
                                 max(int(x1 * attW), 0):min(math.ceil(x2 * attW), attW)] = 1
-            tmpAttention.append(attention_gt)
-        attentions.append(np.array(tmpAttention))
-    return np.array(attentions)
+            if i == 0:
+                tmpAttention1.append(attention_gt)
+            else:
+                tmpAttention2.append(attention_gt)
+        attentions1.append(np.array(tmpAttention1))
+        attentions2.append(np.array(tmpAttention2))
+    return np.squeeze(np.array(attentions1)), np.squeeze(np.array(attentions2))
 
 
 def focal_loss(targets, plogits):
@@ -258,7 +265,7 @@ def focal_loss(targets, plogits):
     alpha_factor = tf.where(targets[:, 1] == 1., alpha_factor, 1. - alpha_factor)
     focal_weight = tf.where(targets[: 1] == 1., 1. - tf.nn.softmax(plogits)[:, 1], tf.nn.softmax(plogits)[:, 1])
     focal_weight = alpha_factor * tf.pow(focal_weight, gamma)
-    bce = tf.nn.softmax_cross_entropy_with_logits(logits=plogits, labels=targets)
+    bce = tf.nn.softmax_cross_entropy_with_logits_v2(logits=plogits, labels=targets)
     cls_loss = tf.reduce_sum(focal_weight * bce)
     return cls_loss
 
@@ -271,7 +278,7 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         conf_true = tf.cast(tf.reshape(confs_true, (batch_size, -1)), tf.int32)
         conf_true_oh = tf.one_hot(conf_true, 2)
 
-        positive_check = tf.reshape(tf.cast(tf.equal(conf_true, 1), tf.float32), (batch_size, 896))
+        positive_check = tf.reshape(tf.cast(tf.equal(conf_true, 1), tf.float32), (batch_size, tf.shape(loc_preds)[1]))
         pos_ids = tf.cast(positive_check, tf.bool)
         n_pos = tf.maximum(tf.reduce_sum(positive_check), 1)
 
@@ -280,31 +287,32 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
 
         cls_loss = focal_loss(conf_true_oh, conf_preds)
 
-        attLoss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention, labels=attention_gt,
-                                                                        name='attLoss'))
-        loss = cls_loss + tf.reduce_sum(l1_loss)/n_pos + attLoss/float(batch_size)
-
+        loss = cls_loss + tf.reduce_sum(l1_loss)/n_pos
+        if pAttention is not None:
+            for i in range(len(pAttention)):
+                attLoss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i], labels=attention_gt[i]))
+                loss = loss + attLoss
         return loss/float(batch_size)
 
 if __name__ == '__main__':
     anchors = np.zeros(shape=(25, 4), dtype=np.float32)
-    boxes = np.ones((1, 25, 4), dtype=np.float32)
-    gBoxes = np.ones((1, 3, 4), dtype=np.float32)
-    plogits = np.zeros(shape=[1, 25, 2], dtype=np.float32)
+    boxes = np.ones((25, 4), dtype=np.float32)
+    gBoxes = np.ones((3, 4), dtype=np.float32)
+    plogits = np.zeros(shape=[25, 2], dtype=np.float32)
     import random
     for i in range(30):
         for j in range(4):
             if i < 3:
-                gBoxes[0][i][j] = random.random()
+                gBoxes[i][j] = random.random()
             if i >= 25:
                 pass
                 # boxes[0][i][j] = random.random()
             else:
-                boxes[0][i][j] = random.random()
+                boxes[i][j] = random.random()
                 anchors[i][j] = random.random()
                 if j == 0:
-                    plogits[0][i][0] = random.random()
-                    plogits[0][i][1] = 1 - plogits[0][i][0]
-    boxes = tf.constant(boxes.tolist())
-    # anchorFillter(anchors, boxes)
-    faceDetLoss(plogits, boxes, anchors, gBoxes, match_threshold=0., batch_size=1)
+                    plogits[i][0] = random.random()
+                    plogits[i][1] = 1 - plogits[i][0]
+    # boxes = tf.constant(boxes.tolist())
+    anchorFillter(anchors, boxes, 0., 0.)
+    # faceDetLoss(plogits, boxes, anchors, gBoxes, match_threshold=0., batch_size=1)

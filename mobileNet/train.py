@@ -96,6 +96,7 @@ def getBatch(examples, batch_size):
     print('GEXPIndex:', globalExpIndex)
     return tmpBatch[0], tmpBatch[1]
 
+
 if __name__ == '__main__':
     np.set_printoptions(suppress=True)
 
@@ -109,7 +110,7 @@ if __name__ == '__main__':
     SAVE_FREQ = 10000
     BATCH_SIZE = 32
     MAX_EPOCH = 300
-    IM_S = 1024
+    IM_S = 256
     IM_CHANNELS = 3
     IOU_THRESH = 0.5
     USE_NORM = True
@@ -178,7 +179,7 @@ if __name__ == '__main__':
                 try:
                     # tmpLoss = faceDetLoss(fd_model.cls, fd_model.reg, anchors=anchors, gBoxes=lbls, pAttention=fd_model.attention)
                     # loss = sess.run([tmpLoss], feed_dict={fd_model.input: imgs, })
-                    loss = fd_model.getTrainLoss(sess, np.array(imgs), anchors, lbls)
+                    loss = fd_model.getTrainLoss(sess, imgs, anchors, lbls)
                     train_loss.append(loss)
                     # train_mAP_pred.append(mAP)
                     # writer.add_summary(summary, i)

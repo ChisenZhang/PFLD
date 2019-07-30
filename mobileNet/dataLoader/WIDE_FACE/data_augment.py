@@ -216,14 +216,12 @@ class preproc(object):
         image_t = _resize_subtract_mean(image_t, self.img_dim, self.rgb_means, self.rgb_norm)
         boxes_t[:, 0::2] /= width
         boxes_t[:, 1::2] /= height
-        resizeRatio = 256./max(width, height)
         # delInds = np.where(np.logical_and(boxes_t[: 2]*256. < 32, boxes_t[: 3]*256. < 32))
         # boxes_t = np.delete(boxes_t, np.squeeze(delInds))
         # labels_t = np.delete(labels_t, np.squeeze(delInds))
         if boxes_t.size < 1:
             return None, None
-        else:
-            image_t = cv2.resize(image_t, (0, 0), fx=resizeRatio, fy=resizeRatio)
+
         labels_t = np.expand_dims(labels_t, 1)
         targets_t = np.hstack((boxes_t, labels_t))
 

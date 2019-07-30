@@ -22,7 +22,8 @@ class MobileNetV2(object):
         self.index = 0
         self.target_locs = tf.placeholder(tf.float32, shape=(None, None, 4), name='target_locs')
         self.target_confs = tf.placeholder(tf.float32, shape=(None, None, 1), name='target_confs')
-        self.target_attention = tf.placeholder(tf.float32, shape=(None, None, None), name='target_attention')
+        self.target_attention1 = tf.placeholder(tf.float32, shape=(None, 16, 16), name='target_attention1')
+        self.target_attention2 = tf.placeholder(tf.float32, shape=(None, 8, 8), name='target_attention2')
 
     def model(self, x):
         with tf.variable_scope('MobileNet'):
@@ -111,7 +112,8 @@ class MobileNetV2(object):
             self.cls = tf.concat((cls1, cls2), axis=1, name='cls')
             self.prob = tf.nn.softmax(self.cls, name='probs')
             self.reg = tf.concat((reg1, reg2), axis=1, name='reg')
-            self.attention = [attention1, attention2]
+            self.attention1 = tf.squeeze(attention1, name='attention1')
+            self.attention2 = tf.squeeze(attention2, name='attention2')
 
             # self.logits = tf.reshape(output, shape=[-1, self.num_classes], name="logit")
             # self.prob = tf.nn.softmax(self.logits, name='prob')
@@ -347,11 +349,11 @@ class MobileNetV2(object):
     # 返回loss
     def getTrainLoss(self, sess, imgs, anchors, gBoxes):
         locs, confs = encode_batch(anchors, gBoxes, 0.3, 0.5)
-        attentions = generateAttentionMap(32, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
+        attention1, attention2 = generateAttentionMap(32, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
         self.loss = faceDetLoss(self.cls, self.reg, locs_true=self.target_locs, confs_true=self.target_confs,
-                                pAttention=self.attention, attention_gt=self.target_attention)
+                                pAttention=[self.attention1, self.attention2], attention_gt=[self.target_attention1, self.target_attention2])
         loss = sess.run([self.loss], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,
-                                                self.target_attention: attentions})
+                                                self.target_attention1: attention1, self.target_attention2: attention2})
         return loss
 
 
