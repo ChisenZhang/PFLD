@@ -75,7 +75,7 @@ class Anchors(object):
                 sifted_anchors = self.sift_tile(tmpAnchors, stride=2**strides[i])
                 anchorsAll = np.append(anchorsAll, sifted_anchors, axis=0)
 
-        return anchorPointTrans(anchorsAll)/imgSize
+        return anchorsAll
 
     def generate_anchors_tile(self, ratios=None, scales=None):
         if ratios is None:

@@ -8,7 +8,7 @@ mobileNetV2网络结构
 import tensorflow as tf
 # import numpy as np
 # import time
-from lossComput import faceDetLoss
+from lossComput import faceDetLoss, encode_batch, generateAttentionMap
 
 training_backBone = True
 training_FaceDetection = True
@@ -20,8 +20,9 @@ class MobileNetV2(object):
         self.num_classes = num_classes
         self.training = training
         self.index = 0
-        self.anchors = None
-        self.gBoxes = None
+        self.target_locs = tf.placeholder(tf.float32, shape=(None, None, 4), name='target_locs')
+        self.target_confs = tf.placeholder(tf.float32, shape=(None, None, 1), name='target_confs')
+        self.target_attention = tf.placeholder(tf.float32, shape=(None, None, None), name='target_attention')
 
     def model(self, x):
         with tf.variable_scope('MobileNet'):
@@ -345,10 +346,12 @@ class MobileNetV2(object):
 
     # 返回loss
     def getTrainLoss(self, sess, imgs, anchors, gBoxes):
-        self.anchors = anchors
-        self.gBoxes = gBoxes
-        self.loss = faceDetLoss(self.cls, self.reg, anchors=self.anchors, gBoxes=self.gBoxes, pAttention=self.attention)
-        loss = sess.run([self.loss], feed_dict={self.input: imgs, self.training: True})
+        locs, confs = encode_batch(anchors, gBoxes, 0.3, 0.5)
+        attentions = generateAttentionMap(32, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
+        self.loss = faceDetLoss(self.cls, self.reg, locs_true=self.target_locs, confs_true=self.target_confs,
+                                pAttention=self.attention, attention_gt=self.target_attention)
+        loss = sess.run([self.loss], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,
+                                                self.target_attention: attentions})
         return loss
 
 

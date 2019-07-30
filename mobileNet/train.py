@@ -34,7 +34,7 @@ sys.path.append('./dataLoader/WIDE_FACE')
 from PCModel import producer
 from WIDE_FACE.wider_voc import VOCDetection, AnnotationTransform
 from WIDE_FACE.data_augment import preproc
-from lossComput import faceDetLoss
+from lossComput2 import faceDetLoss
 
 data_train_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/WIDER_FACE/'
 data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
@@ -175,30 +175,34 @@ if __name__ == '__main__':
 
                 print('Iteration ', i, ' ', end='\r')
                 i += 1
-                # tmpLoss = faceDetLoss(fd_model.cls, fd_model.reg, anchors=anchors, gBoxes=lbls, pAttention=fd_model.attention)
-                # loss = sess.run([tmpLoss], feed_dict={fd_model.input: imgs, })
-                loss = fd_model.getTrainLoss(sess, np.array(imgs), anchors, lbls)
-                train_loss.append(loss)
-                # train_mAP_pred.append(mAP)
-                # writer.add_summary(summary, i)
-                if i%PRINT_FREQ == 0:
-                    print("")
-                    print('Iteration: ', i, end='')
-                    print(' Mean train loss: ', np.mean(train_loss), end='')
-                    # print(' Mean train mAP: ', np.mean(train_mAP_pred))
-                    # train_mAP_pred = []
-                    train_loss = []
-                # if i%TEST_FREQ == 0:
-                #     for j in range(25):
-                #         imgs, lbls = svc_test.random_sample(BATCH_SIZE)
-                #         pred_confs, pred_locs = fb_model.test_iter(imgs)
-                #         pred_boxes = anchors.decode_batch(boxes_vec, pred_locs, pred_confs)
-                #         test_mAP_pred.append(anchors.compute_mAP(imgs, lbls, pred_boxes, normalised = USE_NORM))
-                #     print('Mean test mAP: ', np.mean(test_mAP_pred))
-                #     test_mAP_pred = []
-                if i%SAVE_FREQ == 0:
-                    print('Saving model...')
-                    saver.save(sess, save_f + model_name+str(i), global_step=i)
+                try:
+                    # tmpLoss = faceDetLoss(fd_model.cls, fd_model.reg, anchors=anchors, gBoxes=lbls, pAttention=fd_model.attention)
+                    # loss = sess.run([tmpLoss], feed_dict={fd_model.input: imgs, })
+                    loss = fd_model.getTrainLoss(sess, np.array(imgs), anchors, lbls)
+                    train_loss.append(loss)
+                    # train_mAP_pred.append(mAP)
+                    # writer.add_summary(summary, i)
+                    if i%PRINT_FREQ == 0:
+                        print("")
+                        print('Iteration: ', i, end='')
+                        print(' Mean train loss: ', np.mean(train_loss), end='')
+                        # print(' Mean train mAP: ', np.mean(train_mAP_pred))
+                        # train_mAP_pred = []
+                        train_loss = []
+                    # if i%TEST_FREQ == 0:
+                    #     for j in range(25):
+                    #         imgs, lbls = svc_test.random_sample(BATCH_SIZE)
+                    #         pred_confs, pred_locs = fb_model.test_iter(imgs)
+                    #         pred_boxes = anchors.decode_batch(boxes_vec, pred_locs, pred_confs)
+                    #         test_mAP_pred.append(anchors.compute_mAP(imgs, lbls, pred_boxes, normalised = USE_NORM))
+                    #     print('Mean test mAP: ', np.mean(test_mAP_pred))
+                    #     test_mAP_pred = []
+                    if i%SAVE_FREQ == 0:
+                        print('Saving model...')
+                        saver.save(sess, save_f + model_name+str(i), global_step=i)
+                except Exception as E:
+                    print('run error:', E)
+                    exit(-1)
             print("epoch %d, steps %d" % (k, i))
         saver.save(sess, save_f + model_name + str(i)+'_final', global_step=i)
         print('trained finish!')
