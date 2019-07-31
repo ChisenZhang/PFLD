@@ -8,10 +8,10 @@ loss 计算函数
 import tensorflow as tf
 import numpy as np
 import math
-from anchors import anchorPointTrans
 
 alpha = 0.25
 gamma = 2
+
 
 def compute_iou_np(bboxes1, bboxes2):
     # Extracted from: https://medium.com/@venuktan/vectorized-intersection-over-union-iou-in-numpy-and-tensor-flow-4fa16231b63d
@@ -30,6 +30,7 @@ def compute_iou_np(bboxes1, bboxes2):
     # Fix divide by 0 errors
     iou = interArea / (boxAArea + np.transpose(boxBArea) - interArea + 0.00001)
     return np.clip(iou, 0, 1)
+
 
 def non_max_suppression(boxes, overlapThresh):
     # Extracted from: https://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/
@@ -83,6 +84,7 @@ def non_max_suppression(boxes, overlapThresh):
     # integer data type
     return pick
 
+
 # function pick = nms(boxes,threshold,type)
 def nms(boxes, threshold, method='Union'):
     if boxes.size == 0:
@@ -115,6 +117,7 @@ def nms(boxes, threshold, method='Union'):
         I = I[np.where(o <= threshold)]
     pick = pick[0:counter]
     return pick
+
 
 # function [dy edy dx edx y ey x ex tmpw tmph] = pad(total_boxes,w,h)
 def pad(total_boxes, w, h):
@@ -151,6 +154,7 @@ def pad(total_boxes, w, h):
 
     return dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph
 
+
 # function [boundingbox] = bbreg(boundingbox,reg)
 def bbreg(boundingbox, reg):
     """Calibrate bounding boxes"""
@@ -165,6 +169,7 @@ def bbreg(boundingbox, reg):
     b4 = boundingbox[:, 3] + reg[:, 3] * h
     boundingbox[:, 0:4] = np.transpose(np.vstack([b1, b2, b3, b4]))
     return boundingbox
+
 
 # function [bboxA] = rerec(bboxA)
 # box 转成正方形
@@ -217,6 +222,46 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
 
     return locs, np.squeeze(targets)
 
+
+def decode(anchor_boxes, locs, confs, min_conf=0.05, keep_top=400, nms_thresh=0.3, do_nms=True):
+    # NOTE: confs is a N x 2 matrix
+    # global SCALE_FACTOR
+
+    centers_a = np.array(anchor_boxes[:, 2:] + anchor_boxes[:, :2]) / 2
+    w_h_a = np.array(anchor_boxes[:, 2:] - anchor_boxes[:, :2])
+
+    cxcy_in = locs[:, :2]
+    wh_in = locs[:, 2:]
+
+    wh = np.exp(wh_in) * w_h_a
+    cxcy = cxcy_in * w_h_a + centers_a
+
+    boxes_out = np.concatenate([cxcy - wh / 2, cxcy + wh / 2], axis=-1)
+
+    # Get only if confidence > 0.05 & keep top 400 boxes
+    # tmp = confs[:, 1]
+    conf_ids = np.squeeze(np.argwhere(confs[:, 1] > min_conf))
+    conf_merge = np.reshape(np.stack((conf_ids, confs[conf_ids, 1]), axis=-1), (-1, 2))
+    conf_merge = conf_merge[conf_merge[:, 1].argsort()[::-1]]
+    conf_merge = conf_merge[:keep_top, :]
+    conf_ids, conf_vals = conf_merge[:, 0].astype(int), conf_merge[:, 1]
+    # Run NMS on extracted boxes
+    boxes_out = boxes_out[np.array(conf_merge[:, 0], dtype=int)]
+    if do_nms:
+        keep = non_max_suppression(boxes_out, nms_thresh)
+        return boxes_out[keep], conf_ids[keep], conf_vals[keep]
+    else:
+        return boxes_out, conf_ids, conf_vals
+
+
+def decode_batch(anchors, locs, confs, min_conf=0.5):
+    out_boxes = []
+    for i in range(len(locs)):
+        b, _, _ = decode(anchors, np.squeeze(locs[i]), np.squeeze(confs[i]), min_conf=min_conf, do_nms=True)
+        out_boxes.append(b)
+    return out_boxes
+
+
 def encode_batch(anchors, boxes, minThresh=0.3, maxThresh=0.7):
     out_locs = []
     out_confs = []
@@ -226,11 +271,13 @@ def encode_batch(anchors, boxes, minThresh=0.3, maxThresh=0.7):
         out_confs.append(c)
     return np.array(out_locs), np.array(out_confs)[:, :, np.newaxis]
 
+
 def smooth_L1_loss(y_true, y_pred):
     absolute_loss = tf.abs(y_true - y_pred)
     square_loss = 0.5 * (y_true - y_pred) ** 2
     l1_loss = tf.where(tf.less(absolute_loss, 1.0), square_loss, absolute_loss - 0.5)
     return tf.reduce_sum(l1_loss, axis=-1)
+
 
 def generateAttentionMap(batch_size, shapes, gBoxes):
     attentions1 = []
@@ -269,6 +316,7 @@ def focal_loss(targets, plogits):
     cls_loss = tf.reduce_sum(focal_weight * bce)
     return cls_loss
 
+
 def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttention=None, attention_gt=None, match_threshold=0.5,
                 negative_ratio=3., scope='faceDetLoss'):
     with tf.name_scope(scope):
@@ -293,6 +341,7 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
                 attLoss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i], labels=attention_gt[i]))
                 loss = loss + attLoss
         return loss/float(batch_size)
+
 
 if __name__ == '__main__':
     anchors = np.zeros(shape=(25, 4), dtype=np.float32)
