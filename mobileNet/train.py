@@ -39,6 +39,14 @@ from lossComput2 import faceDetLoss
 data_train_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/WIDER_FACE/'
 data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
 
+# Training parameters
+optimizer = 'adam'        # A string from: 'agd', 'adam', 'momentum'
+learning_rate = 5e-3
+momentum = None          # Necessary if optimizer is 'momentum'
+summarize = True         # True if summarize in tensorboard
+step = 0
+
+
 def count_number_trainable_params(scope=""):
     '''
     Counts the number of trainable variables.
@@ -118,6 +126,7 @@ if __name__ == '__main__':
     # NOTE: SSD variances are set in the anchors.py file
     anchorsC = Anchors()
     anchors = anchorsC.get_anchors(fmSizes=[(16, 16), (8, 8)], fmBased=True)
+
     tf.reset_default_graph()
 
     train_data = VOCDetection(data_train_dir, preproc(IM_S, 0, 1/255.), AnnotationTransform())
@@ -125,8 +134,16 @@ if __name__ == '__main__':
 
     print('Building model...')
     # x = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
-    fd_model = MobileNetV2(num_classes=2)
-    fd_model.blazeModel()
+    fd_model = MobileNetV2(num_classes=2, batch_size=BATCH_SIZE, anchorsLen=anchors.shape[0])
+    fd_model.blazeModel(learning_rate, int((len(train_data) / BATCH_SIZE) / 4))
+
+    # Summarize in tensorboard
+    # if summarize:
+    #     tf.summary.scalar('loss', loss)
+    #     tf.summary.scalar('accuracy', accuracy)
+    #     tf.summary.scalar('learning_rate', lr)
+    #     tf.summary.image("input_img", example_batch, max_outputs=6)
+    #     summary_op = tf.summary.merge_all()
 
     print('Num params: ', count_number_trainable_params())
 
@@ -148,7 +165,6 @@ if __name__ == '__main__':
             print('Model not found - using default initialisation!')
             sess.run(tf.global_variables_initializer())
         writer = tf.summary.FileWriter('./logs', sess.graph)
-        i = 0
         train_mAP_pred = []
         train_loss = []
         test_mAP_pred = []
@@ -174,18 +190,18 @@ if __name__ == '__main__':
                 if imgs is None:
                     break
 
-                print('Iteration ', i, ' ', end='\r')
-                i += 1
+                print('Iteration ', step, ' ', end='\r')
+
                 try:
                     # tmpLoss = faceDetLoss(fd_model.cls, fd_model.reg, anchors=anchors, gBoxes=lbls, pAttention=fd_model.attention)
                     # loss = sess.run([tmpLoss], feed_dict={fd_model.input: imgs, })
-                    loss = fd_model.getTrainLoss(sess, imgs, anchors, lbls)
+                    loss, summary = fd_model.getTrainLoss(sess, imgs, anchors, lbls)
                     train_loss.append(loss)
                     # train_mAP_pred.append(mAP)
-                    # writer.add_summary(summary, i)
-                    if i%PRINT_FREQ == 0:
+                    writer.add_summary(summary, step)
+                    if step%PRINT_FREQ == 0:
                         print("")
-                        print('Iteration: ', i, end='')
+                        print('Iteration: ', step, end='')
                         print(' Mean train loss: ', np.mean(train_loss), end='')
                         # print(' Mean train mAP: ', np.mean(train_mAP_pred))
                         # train_mAP_pred = []
@@ -198,12 +214,14 @@ if __name__ == '__main__':
                     #         test_mAP_pred.append(anchors.compute_mAP(imgs, lbls, pred_boxes, normalised = USE_NORM))
                     #     print('Mean test mAP: ', np.mean(test_mAP_pred))
                     #     test_mAP_pred = []
-                    if i%SAVE_FREQ == 0:
+                    if step%SAVE_FREQ == 0:
                         print('Saving model...')
-                        saver.save(sess, save_f + model_name+str(i), global_step=i)
+                        saver.save(sess, save_f + model_name+str(step), global_step=step)
                 except Exception as E:
                     print('run error:', E)
                     exit(-1)
-            print("epoch %d, steps %d" % (k, i))
-        saver.save(sess, save_f + model_name + str(i)+'_final', global_step=i)
+                step += 1
+
+            print("epoch %d, steps %d" % (k, step))
+        saver.save(sess, save_f + model_name + str(step)+'_final', global_step=step)
         print('trained finish!')

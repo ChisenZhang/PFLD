@@ -15,15 +15,18 @@ training_FaceDetection = True
 training_LandMark = False
 
 class MobileNetV2(object):
-    def __init__(self, num_classes=2, training=True):
+    def __init__(self, num_classes=2, batch_size=32, anchorsLen=896, training=True):
         self.input = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
         self.num_classes = num_classes
         self.training = training
+        self.batch_size = batch_size
+        self.anchorsLen = anchorsLen
         self.index = 0
         self.target_locs = tf.placeholder(tf.float32, shape=(None, None, 4), name='target_locs')
         self.target_confs = tf.placeholder(tf.float32, shape=(None, None, 1), name='target_confs')
         self.target_attention1 = tf.placeholder(tf.float32, shape=(None, 16, 16), name='target_attention1')
         self.target_attention2 = tf.placeholder(tf.float32, shape=(None, 8, 8), name='target_attention2')
+        self.GStep = tf.Variable(0, trainable=False)
 
     def model(self, x):
         with tf.variable_scope('MobileNet'):
@@ -83,7 +86,7 @@ class MobileNetV2(object):
             self.logits = tf.reshape(output, shape=[-1, self.num_classes], name="logit")
             self.prob = tf.nn.softmax(self.logits, name='prob')
 
-    def blazeModel(self):
+    def blazeModel(self, learning_rate, decay_step):
         with tf.variable_scope('BlazeNet'):
             output = tf.layers.conv2d(inputs=self.input,
                                       filters=16,
@@ -105,18 +108,33 @@ class MobileNetV2(object):
             output2 = self.BlazeBlock(output1, 80, 1, 'BlazeBlock11', 2, True, 40)
             out1 = self.inceptionBlock(output1)
             out1, attention1 = self.attentionBlock(out1, scope='attentionBlock1')
-            cls1, reg1 = self.clsAndReg(out1, 2, 512, scope='clsAndReg1')
+            cls1, reg1 = self.clsAndReg(out1, self.num_classes, 2, scope='clsAndReg1')
             out2 = self.inceptionBlock(output2)
             out2, attention2 = self.attentionBlock(out2, scope='attentionBlock2')
-            cls2, reg2 = self.clsAndReg(out2, 2, 384, scope='clsAndReg2')
-            self.cls = tf.concat((cls1, cls2), axis=1, name='cls')
+            cls2, reg2 = self.clsAndReg(out2, self.num_classes, 6, scope='clsAndReg2')
+            self.cls = tf.concat((cls1, cls2), axis=-2)
+            self.cls = tf.reshape(self.cls, [self.batch_size, self.anchorsLen, self.num_classes], name='cls')
             self.prob = tf.nn.softmax(self.cls, name='probs')
-            self.reg = tf.concat((reg1, reg2), axis=1, name='reg')
+            self.reg = tf.concat((reg1, reg2), axis=-2)
+            self.reg = tf.reshape(self.reg, [self.batch_size, self.anchorsLen, 4], name='reg')
             self.attention1 = tf.squeeze(attention1, name='attention1')
             self.attention2 = tf.squeeze(attention2, name='attention2')
 
-            # self.logits = tf.reshape(output, shape=[-1, self.num_classes], name="logit")
-            # self.prob = tf.nn.softmax(self.logits, name='prob')
+            # 多项式衰减 往复
+            self.lr = tf.train.polynomial_decay(learning_rate=learning_rate, global_step=self.GStep,
+                                           decay_steps=decay_step, end_learning_rate=1e-8,
+                                           power=0.5, cycle=True)
+            tf.summary.scalar('LR', self.lr)
+            self.loss = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size, locs_true=self.target_locs,
+                                    confs_true=self.target_confs,
+                                    pAttention=[self.attention1, self.attention2],
+                                    attention_gt=[self.target_attention1, self.target_attention2])
+            self.loss += tf.losses.get_regularization_loss()  # Add regularisation
+            tf.summary.scalar('Loss', self.loss)
+            self.extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(self.extra_update_ops):
+                self.train = tf.train.AdamOptimizer(self.lr, epsilon=0.1).minimize(self.loss, global_step=self.GStep)
+            self.merged = tf.summary.merge_all()
 
     def _inverted_bottleneck(self, input, up_sample_rate, channels, subsample, isTrainable=True):
         with tf.variable_scope('bottleneck_{}'.format(self.index)):
@@ -341,20 +359,19 @@ class MobileNetV2(object):
         with tf.variable_scope(scope):
             channels = input.shape[-1]
             cls = self.conv4(input, channels, (classes + addPosCls + addNegCls)*anchors, trainable=training_FaceDetection)
-            cls = tf.reshape(cls, shape=[-1, anchors, (classes+addPosCls+addNegCls)], name='class')
+            cls = tf.reshape(cls, shape=[self.batch_size, -1, (classes+addPosCls+addNegCls)], name='class')
             reg = self.conv4(input, channels, 4*anchors, trainable=training_FaceDetection)
-            reg = tf.reshape(reg, shape=[-1, anchors, 4], name='reg')
+            reg = tf.reshape(reg, shape=[self.batch_size, -1, 4], name='reg')
             return cls, reg
 
     # 返回loss
     def getTrainLoss(self, sess, imgs, anchors, gBoxes):
         locs, confs = encode_batch(anchors, gBoxes, 0.3, 0.5)
-        attention1, attention2 = generateAttentionMap(32, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
-        self.loss = faceDetLoss(self.cls, self.reg, locs_true=self.target_locs, confs_true=self.target_confs,
-                                pAttention=[self.attention1, self.attention2], attention_gt=[self.target_attention1, self.target_attention2])
-        loss = sess.run([self.loss], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,
+        attention1, attention2 = generateAttentionMap(self.batch_size, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
+        _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,
                                                 self.target_attention1: attention1, self.target_attention2: attention2})
-        return loss
+
+        return loss, merged
 
 
 if __name__ == '__main__':

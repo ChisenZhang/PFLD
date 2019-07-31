@@ -261,9 +261,9 @@ def generateAttentionMap(batch_size, shapes, gBoxes):
 
 
 def focal_loss(targets, plogits):
-    alpha_factor = tf.ones(tf.shape(targets)[0], dtype=tf.float32) * alpha
-    alpha_factor = tf.where(targets[:, 1] == 1., alpha_factor, 1. - alpha_factor)
-    focal_weight = tf.where(targets[: 1] == 1., 1. - tf.nn.softmax(plogits)[:, 1], tf.nn.softmax(plogits)[:, 1])
+    alpha_factor = tf.ones((tf.shape(targets)[0], tf.shape(targets)[1]), dtype=tf.float32) * alpha
+    alpha_factor = tf.where(targets[:, :, 1] == 1., alpha_factor, 1. - alpha_factor)
+    focal_weight = tf.where(targets[:, :, 1] == 1., 1. - tf.nn.softmax(plogits)[:, :, 1], tf.nn.softmax(plogits)[:, :, 1])
     focal_weight = alpha_factor * tf.pow(focal_weight, gamma)
     bce = tf.nn.softmax_cross_entropy_with_logits_v2(logits=plogits, labels=targets)
     cls_loss = tf.reduce_sum(focal_weight * bce)
@@ -282,7 +282,7 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         pos_ids = tf.cast(positive_check, tf.bool)
         n_pos = tf.maximum(tf.reduce_sum(positive_check), 1)
 
-        l1_loss = tf.losses.huber_loss(loc_preds, loc_true, reduction=tf.losses.Reduction.NONE)  # Smoothed L1 loss
+        l1_loss = tf.losses.huber_loss(loc_true, loc_preds, reduction=tf.losses.Reduction.NONE)  # Smoothed L1 loss
         l1_loss = positive_check * tf.reduce_sum(l1_loss, axis=-1)  # Zero out L1 loss for negative boxes
 
         cls_loss = focal_loss(conf_true_oh, conf_preds)
