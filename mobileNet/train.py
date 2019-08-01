@@ -113,9 +113,9 @@ if __name__ == '__main__':
     if not os.path.exists(save_f):
         os.mkdir(save_f)
     model_name = 'faceDet_fmBaseAnchor_'+timeCur+'_'
-    PRINT_FREQ = 500
+    PRINT_FREQ = 10
     TEST_FREQ = 1000
-    SAVE_FREQ = 10000
+    SAVE_FREQ = 5000
     BATCH_SIZE = 32
     MAX_EPOCH = 300
     IM_S = 256
@@ -221,7 +221,8 @@ if __name__ == '__main__':
                     print('run error:', E)
                     exit(-1)
                 step += 1
-
+            print('Saving epoch model...')
+            saver.save(sess, save_f + model_name + str(step), global_step=step)
             print("epoch %d, steps %d" % (k, step))
         saver.save(sess, save_f + model_name + str(step)+'_final', global_step=step)
         print('trained finish!')

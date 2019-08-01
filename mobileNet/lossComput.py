@@ -335,11 +335,18 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
 
         cls_loss = focal_loss(conf_true_oh, conf_preds)
 
-        loss = cls_loss + tf.reduce_sum(l1_loss)/n_pos
+        loss = (cls_loss + tf.reduce_sum(l1_loss))/n_pos
         if pAttention is not None:
+            attLoss = None
             for i in range(len(pAttention)):
-                attLoss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i], labels=attention_gt[i]))
-                loss = loss + attLoss
+                tmpLoss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i],
+                                labels=attention_gt[i])) / tf.cast((tf.shape(pAttention[i])[1]*tf.shape(pAttention[i])[2]), tf.float32)
+                if i == 0:
+                    attLoss = tmpLoss
+                else:
+                    attLoss += tmpLoss
+            attLoss = attLoss/len(pAttention)
+            loss += attLoss
         return loss/float(batch_size)
 
 

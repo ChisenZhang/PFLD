@@ -181,7 +181,7 @@ def freeze_graph(input_checkpoint, output_graph):
 def freeze_graphOri(input_checkpoint, output_graph):
     # 指定输出的节点名称,该节点名称必须是原模型中存在的节点
     output_node_names = "BlazeNet/probs,BlazeNet/reg"
-    net = mobileNet.MobileNetV2(2, training=False, batch_size=1)
+    net = mobileNet.MobileNetV2(num_classes=2, training=False, batch_size=1)
     net.blazeModel(learning_rate=1e-3, decay_step=50)
     saver = tf.train.Saver()
     with tf.Session(config=config) as sess:

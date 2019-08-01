@@ -103,9 +103,9 @@ class MobileNetV2(object):
             output = self.BlazeBlock(output, 32, 1, 'BlazeBlock6', 2, True, 16)
             output = self.BlazeBlock(output, 32, 1, 'BlazeBlock7', 1, True, 16)
             output = self.BlazeBlock(output, 32, 1, 'BlazeBlock8', 1, True, 16)
-            output = self.BlazeBlock(output, 48, 1, 'BlazeBlock9', 2, True, 24)
-            output1 = self.BlazeBlock(output, 48, 1, 'BlazeBlock10', 1, True, 24)
-            output2 = self.BlazeBlock(output1, 64, 1, 'BlazeBlock11', 2, True, 32)
+            output1 = self.BlazeBlock(output, 48, 1, 'BlazeBlock9', 2, True, 24)
+            output = self.BlazeBlock(output1, 48, 1, 'BlazeBlock10', 1, True, 24)
+            output2 = self.BlazeBlock(output, 64, 1, 'BlazeBlock11', 2, True, 32)
             out1 = self.inceptionBlock(output1)
             out1, attention1 = self.attentionBlock(out1, scope='attentionBlock1')
             cls1, reg1 = self.clsAndReg(out1, self.num_classes, 2, scope='clsAndReg1')
@@ -237,7 +237,7 @@ class MobileNetV2(object):
         return out
 
     def Blaze(self, x, n_out, scope, doubleBLZ=False, strides=1, compExpRatio=0.25, isTrainable=True):
-        n_in = x.shape[-1]
+        n_in = x.shape.as_list()[-1]
         n_first = compExpRatio # int(n_out * compExpRatio)
         with tf.variable_scope(scope):
             f = tf.layers.separable_conv2d(inputs=x,
@@ -276,24 +276,27 @@ class MobileNetV2(object):
                                      name='pconv2',
                                      trainable=isTrainable
                                      )
-            if strides != 1 or n_out - n_in > 0:
-                s = tf.layers.conv2d(inputs=x,
-                                    filters=n_out,
-                                    kernel_size=1,
-                                    strides=strides,
-                                    name='projection',
-                                    trainable=isTrainable)
-                # if strides != 1:
-                #     s = tf.layers.max_pooling2d(x, pool_size=strides, strides=strides)
-                # else:
-                #     s = x
-                # if n_out - n_in > 0:
-                #     tmpShape = s.shape
-                #     addShape = (tmpShape[0], tmpShape[1], tmpShape[2], n_out - n_in)
-                #     addC = tf.constant(0.0, shape=addShape, name='ZeroC')
-                #     s = tf.concat([s, addC], axis=-1, name='padZero')
+            # if strides != 1 or n_out - n_in > 0:
+                # s = tf.layers.conv2d(inputs=x,
+                #                     filters=n_out,
+                #                     kernel_size=1,
+                #                     strides=strides,
+                #                     name='projection',
+                #                     trainable=isTrainable)
+            # else:
+            #     s = x
+
+            if strides != 1:
+                s = tf.layers.max_pooling2d(x, pool_size=strides, strides=strides)
             else:
                 s = x
+
+            if n_out - n_in > 0:
+                tmpShape = s.shape.as_list()
+                addShape = (self.batch_size, tmpShape[1], tmpShape[2], n_out - n_in)
+                addC = tf.zeros(shape=addShape, name='ZeroC', dtype=tf.float32)
+                s = tf.concat([s, addC], axis=-1, name='padZero')
+
             output = tf.layers.batch_normalization(inputs=f+s, training=self.training)
             output = tf.nn.relu6(output)
         return output
@@ -327,21 +330,31 @@ class MobileNetV2(object):
         return out
 
     # 4个连续卷积
+    def conv2(self, input, c_in, c_out, trainable=training_FaceDetection):
+        output = tf.layers.conv2d(input, filters=c_in, kernel_size=3, strides=1, padding='same',
+                                  trainable=trainable)
+        output = tf.nn.relu6(output)
+        output = tf.layers.conv2d(output, filters=c_out, kernel_size=3, strides=1, padding='same',
+                                  trainable=trainable)
+        output = tf.layers.batch_normalization(inputs=output, training=self.training)
+        output = tf.nn.relu6(output)
+        return output
+
+    # 4个连续卷积
     def conv4(self, input, c_in, c_out, trainable=training_FaceDetection):
         output = tf.layers.conv2d(input, filters=c_in, kernel_size=3, strides=1, padding='same',
                                  trainable=trainable)
         output = tf.nn.relu6(output)
         output = tf.layers.conv2d(output, filters=c_in, kernel_size=3, strides=1, padding='same',
                                   trainable=trainable)
-        output = tf.nn.relu6(output)
-        output = tf.layers.conv2d(output, filters=c_in, kernel_size=3, strides=1, padding='same',
-                                  trainable=trainable)
+        output = tf.layers.batch_normalization(inputs=output, training=self.training)
         output = tf.nn.relu6(output)
         output = tf.layers.conv2d(output, filters=c_in, kernel_size=3, strides=1, padding='same',
                                   trainable=trainable)
         output = tf.nn.relu6(output)
         output = tf.layers.conv2d(output, filters=c_out, kernel_size=3, strides=1, padding='same',
                                   trainable=trainable)
+        output = tf.layers.batch_normalization(inputs=output, training=self.training)
         output = tf.nn.relu6(output)
         return output
 
@@ -358,9 +371,9 @@ class MobileNetV2(object):
     def clsAndReg(self, input, classes, anchors, addPosCls=0, addNegCls=0, scope='clsAndReg'):
         with tf.variable_scope(scope):
             channels = input.shape[-1]
-            cls = self.conv4(input, channels, (classes + addPosCls + addNegCls)*anchors, trainable=training_FaceDetection)
+            cls = self.conv2(input, channels, (classes + addPosCls + addNegCls)*anchors, trainable=training_FaceDetection)
             cls = tf.reshape(cls, shape=[self.batch_size, -1, (classes+addPosCls+addNegCls)], name='class')
-            reg = self.conv4(input, channels, 4*anchors, trainable=training_FaceDetection)
+            reg = self.conv2(input, channels, 4*anchors, trainable=training_FaceDetection)
             reg = tf.reshape(reg, shape=[self.batch_size, -1, 4], name='reg')
             return cls, reg
 
@@ -377,5 +390,5 @@ class MobileNetV2(object):
 if __name__ == '__main__':
     x = tf.placeholder('float', shape=[None, 256, 256, 3], name='x')
     net = MobileNetV2(2)
-    net.blazeModel()
+    net.blazeModel(1e-3, 3)
     print('abc')

@@ -219,8 +219,8 @@ class preproc(object):
         delInds = np.where(np.logical_or(boxes_t[:, 2]*float(self.img_dim) < minLen, boxes_t[:, 3]*float(self.img_dim) < minLen))
         boxes_t = np.delete(boxes_t, np.squeeze(delInds), axis=0)
         labels_t = np.delete(labels_t, np.squeeze(delInds), axis=0)
-        if boxes_t.shape[0] < 1:
-            return None, None
+        # if boxes_t.shape[0] < 1:
+        #     return None, None
 
         labels_t = np.expand_dims(labels_t, 1)
         targets_t = np.hstack((boxes_t, labels_t))
