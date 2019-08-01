@@ -12,10 +12,9 @@ import queue
 import numpy as np
 
 def producer(q, dataList, batch_size, processFunc=None):
-    num = len(dataList)
     globalExpIndex = 0
     while True:
-        if globalExpIndex + batch_size > num:
+        if globalExpIndex + batch_size > len(dataList):
             globalExpIndex = 0
             print('reset GEXPIndex:', globalExpIndex)
             # random.shuffle(dataList.ids)
@@ -28,6 +27,10 @@ def producer(q, dataList, batch_size, processFunc=None):
         lalBatch = []
 
         for tmp in range(globalExpIndex, globalExpIndex+batch_size):
+            if tmp >= len(dataList):
+                globalExpIndex = 0
+                q.put(None)
+                return
             tmpImg, tmpLal = dataList[tmp] if processFunc is None else processFunc(dataList[tmp])
             imgBatch.append(tmpImg)
             lalBatch.append(np.array(tmpLal)[:, 0:4].tolist())

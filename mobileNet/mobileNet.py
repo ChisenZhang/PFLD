@@ -95,6 +95,8 @@ class MobileNetV2(object):
                                       padding='same',
                                       name='conv1',
                                       trainable=training_backBone)
+            output = tf.layers.batch_normalization(inputs=output, training=self.training)
+            output = tf.nn.relu6(output, name='relu1')
             output = self.BlazeBlock(output, 16, 1, 'BlazeBlock1', 1, False)
             output = self.BlazeBlock(output, 16, 1, 'BlazeBlock2', 1, False)
             output = self.BlazeBlock(output, 24, 1, 'BlazeBlock3', 2, False)
@@ -258,7 +260,7 @@ class MobileNetV2(object):
                                  trainable=isTrainable
                                  )
             if doubleBLZ:
-                f = tf.nn.relu6(f, name='relu5')
+                f = tf.nn.relu6(f, name='relu')
                 f = tf.layers.separable_conv2d(inputs=f,
                                                filters=n_first,
                                                kernel_size=5,
@@ -329,7 +331,7 @@ class MobileNetV2(object):
         out = tf.nn.relu6(out)
         return out
 
-    # 4个连续卷积
+    # 2个连续卷积
     def conv2(self, input, c_in, c_out, trainable=training_FaceDetection):
         output = tf.layers.conv2d(input, filters=c_in, kernel_size=3, strides=1, padding='same',
                                   trainable=trainable)
@@ -337,7 +339,6 @@ class MobileNetV2(object):
         output = tf.layers.conv2d(output, filters=c_out, kernel_size=3, strides=1, padding='same',
                                   trainable=trainable)
         output = tf.layers.batch_normalization(inputs=output, training=self.training)
-        output = tf.nn.relu6(output)
         return output
 
     # 4个连续卷积
@@ -355,7 +356,6 @@ class MobileNetV2(object):
         output = tf.layers.conv2d(output, filters=c_out, kernel_size=3, strides=1, padding='same',
                                   trainable=trainable)
         output = tf.layers.batch_normalization(inputs=output, training=self.training)
-        output = tf.nn.relu6(output)
         return output
 
     # attention 模块
@@ -389,6 +389,6 @@ class MobileNetV2(object):
 
 if __name__ == '__main__':
     x = tf.placeholder('float', shape=[None, 256, 256, 3], name='x')
-    net = MobileNetV2(2)
+    net = MobileNetV2(2, batch_size=1, training=False)
     net.blazeModel(1e-3, 3)
     print('abc')
