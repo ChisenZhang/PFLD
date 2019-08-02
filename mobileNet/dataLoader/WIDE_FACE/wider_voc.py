@@ -82,24 +82,19 @@ class VOCDetection(object):
           self.ids = [tuple(line.split()) for line in f]
 
     def __getitem__(self, index):
-        while True:
-            img_id = self.ids[index]
-            target = ET.parse(self._annopath % img_id[1]).getroot()
-            #print ("self._imgpath % image_id[0]", self._imgpath % img_id[0])
-            #print ("target: ", target)
-            img = cv2.imread(self._imgpath % img_id[0], cv2.IMREAD_COLOR)
-            height, width, _ = img.shape
+        img_id = self.ids[index]
+        target = ET.parse(self._annopath % img_id[1]).getroot()
+        #print ("self._imgpath % image_id[0]", self._imgpath % img_id[0])
+        #print ("target: ", target)
+        img = cv2.imread(self._imgpath % img_id[0], cv2.IMREAD_COLOR)
+        height, width, _ = img.shape
 
-            if self.target_transform is not None:
-                target = self.target_transform(target)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
 
-            if self.preproc is not None:
-                img, target = self.preproc(img, target)
-                if img is None:
-                    line = self.ids.pop(index)
-                    print('delete index of :', line)
-                    continue
-            break
+        if self.preproc is not None:
+            img, target = self.preproc(img, target)
+
         return img, target
 
     def __len__(self):

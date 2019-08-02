@@ -93,9 +93,10 @@ def main(argv):
                 frame = frame[int(c_shp[0] / 4):-int(c_shp[0] / 4),
                         int((c_shp[1] - WIDTH_DES) / 2):-int((c_shp[1] - WIDTH_DES) / 2)]
             else:
-                r = WIDTH_DES / frame.shape[1]
-                dim_des = (int(WIDTH_DES), int(frame.shape[0] * r))
-                frame = cv2.resize(frame, (WIDTH_DES, HEIGHT_DES))
+                r = WIDTH_DES / max(frame.shape[1], frame.shape[0])
+                dim_des = (int(WIDTH_DES), int(frame.shape[1] * r))
+                frame = cv2.resize(frame, (0, 0), fx=r, fy=r) # (WIDTH_DES, HEIGHT_DES))
+                frame = np.pad(frame, ((0, HEIGHT_DES - frame.shape[0]), (0, WIDTH_DES - frame.shape[1]), (0, 0)))
             # frame_padded = lighting_balance(frame)
             # frame_padded = cv2.copyMakeBorder(frame, 0, max(0, HEIGHT_DES - frame.shape[0]), 0, 0, cv2.BORDER_CONSTANT, value=(0,0,0))
             # pred_confs, pred_locs = model.test_iter(np.expand_dims(frame, axis = 0))
@@ -109,15 +110,15 @@ def main(argv):
             # f.close()
             # exit(1)
 
-            # f = open('paramR.txt', 'w', encoding='utf-8')
-            # for i in range(896):
-            #     l = pred_locs[0][i][0]
-            #     t = pred_locs[0][i][1]
-            #     r = pred_locs[0][i][2]
-            #     b = pred_locs[0][i][3]
-            #     p = pred_confs[0][i][1]
-            #     print('index:', i, ', L:', l, ', T:', t, ', R:', r, ', B:', b, ', P:', p, file=f)
-            # f.close()
+            f = open('paramR.txt', 'w', encoding='utf-8')
+            for i in range(896):
+                l = pred_locs[0][i][0]
+                t = pred_locs[0][i][1]
+                r = pred_locs[0][i][2]
+                b = pred_locs[0][i][3]
+                p = pred_confs[0][i][1]
+                print('index:', i, ', L:', l, ', T:', t, ', R:', r, ', B:', b, ', P:', p, file=f)
+            f.close()
 
             pred_boxes = decode_batch(boxes_vec, pred_locs, pred_confs, min_conf=0.3)[0]
             pred_boxes[pred_boxes < 0] = 0

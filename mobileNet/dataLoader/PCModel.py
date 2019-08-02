@@ -26,12 +26,19 @@ def producer(q, dataList, batch_size, processFunc=None):
         imgBatch = []
         lalBatch = []
 
+        tmpL = 0
         for tmp in range(globalExpIndex, globalExpIndex+batch_size):
-            if tmp >= len(dataList):
+            if tmp + tmpL >= len(dataList):
                 globalExpIndex = 0
                 q.put(None)
                 return
-            tmpImg, tmpLal = dataList[tmp] if processFunc is None else processFunc(dataList[tmp])
+
+            while True: # 处理图中框过小，过滤
+                tmpImg, tmpLal = dataList[tmp + tmpL] if processFunc is None else processFunc(dataList[tmp+tmpL])
+                if tmpImg is None:
+                    tmpL += 1
+                else:
+                    break
             imgBatch.append(tmpImg)
             lalBatch.append(np.array(tmpLal)[:, 0:4].tolist())
             # print(tmpBatch[-1][0].shape, tmpBatch[-1][1].shape)
@@ -40,7 +47,7 @@ def producer(q, dataList, batch_size, processFunc=None):
         #     for sample in tmpBatch:
         #         batch.append(processFunc(sample))
         #     tmpBatch = batch
-        globalExpIndex += batch_size
+        globalExpIndex += batch_size + tmpL
         print('GEXPIndex:', globalExpIndex)
         q.put([imgBatch, lalBatch])
 

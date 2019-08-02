@@ -96,7 +96,7 @@ class MobileNetV2(object):
                                       name='conv1',
                                       trainable=training_backBone)
             output = tf.layers.batch_normalization(inputs=output, training=self.training)
-            output = tf.nn.relu6(output, name='relu1')
+            output = tf.nn.relu6(output, name='relu')
             output = self.BlazeBlock(output, 16, 1, 'BlazeBlock1', 1, False)
             output = self.BlazeBlock(output, 16, 1, 'BlazeBlock2', 1, False)
             output = self.BlazeBlock(output, 24, 1, 'BlazeBlock3', 2, False)
