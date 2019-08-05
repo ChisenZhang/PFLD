@@ -244,5 +244,6 @@ if __name__ == '__main__':
             print('Saving epoch model...')
             saver.save(sess, save_f + model_name + str(step), global_step=step)
             print("epoch %d, steps %d" % (k, step))
+        data_loader.stop()
         saver.save(sess, save_f + model_name + str(step)+'_final', global_step=step)
         print('trained finish!')
