@@ -34,6 +34,7 @@ sys.path.append('./dataLoader/WIDE_FACE')
 from PCModel import producer
 from WIDE_FACE.wider_voc import VOCDetection, AnnotationTransform
 from WIDE_FACE.data_augment import preproc
+from dataLoader import DataService
 
 data_train_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/WIDER_FACE/'
 data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
@@ -131,6 +132,10 @@ if __name__ == '__main__':
     train_data = VOCDetection(data_train_dir, preproc(IM_S, 0, 1/255.), AnnotationTransform())
     print('train_wideFaceNum:', len(train_data))
 
+    data_loader = DataService(train_data, BATCH_SIZE, 32, workers=5)
+    data_loader.start()
+    epoch_Steps = len(train_data)//BATCH_SIZE
+
     print('Building model...')
     # x = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
     fd_model = MobileNetV2(num_classes=2, batch_size=BATCH_SIZE, anchorsLen=anchors.shape[0])
@@ -169,26 +174,32 @@ if __name__ == '__main__':
         test_mAP_pred = []
 
         for k in range(MAX_EPOCH):
-            random.shuffle(train_data.ids)
-            q = queue.Queue(8 * BATCH_SIZE)
-            prod = threading.Thread(target=producer, args=(q, train_data, BATCH_SIZE,))
-            prod.start()
-            while not q.full():
-                continue
-            print('q.size:', q.qsize())
+            print('epoch:', k)
+
+            # random.shuffle(train_data.ids)
+            # q = queue.Queue(8 * BATCH_SIZE)
+            # prod = threading.Thread(target=producer, args=(q, train_data, BATCH_SIZE,))
+            # prod.start()
+            # while not q.full():
+            #     continue
+            # print('q.size:', q.qsize())
+
             flag = True
             while True:
-                if q.empty():
-                    if flag:
-                        print('training wait for data...', step)
-                        continue
-                    else:
-                        break
-                data = q.get()
-                if data is None:
-                    flag = False
-                    continue
-                imgs, lbls = data
+                # if q.empty():
+                #     if flag:
+                #         print('training wait for data...', step)
+                #         continue
+                #     else:
+                #         break
+                # data = q.get()
+
+                # if data is None:
+                #     flag = False
+                #     continue
+                # imgs, lbls = data
+
+                imgs, lbls = data_loader.pop()
 
                 if imgs is None:
                     break
@@ -217,12 +228,15 @@ if __name__ == '__main__':
                     #         test_mAP_pred.append(anchors.compute_mAP(imgs, lbls, pred_boxes, normalised = USE_NORM))
                     #     print('Mean test mAP: ', np.mean(test_mAP_pred))
                     #     test_mAP_pred = []
-                    if step%SAVE_FREQ == 0:
+                    if step % SAVE_FREQ == 0:
                         print('Saving model...')
                         saver.save(sess, save_f + model_name+str(step), global_step=step)
+                    if step != 0 and step%epoch_Steps == 0:
+                        break
                 except Exception as E:
                     print('run error:', E)
-                    prod.join()
+                    # prod.join()
+                    data_loader.stop()
                     exit(-1)
                 step += 1
 

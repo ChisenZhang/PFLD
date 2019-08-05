@@ -52,7 +52,7 @@ class Anchors(object):
     #
     #     return all_anchors
 
-    def get_anchors(self, fmSizes, ratios=np.array([1., 1.5]), scales=np.array([[1], [4, 8, 16]]), strides=[4, 5],
+    def get_anchors(self, fmSizes, ratios=np.array([1., 1.5]), scales=np.array([[2], [8, 16, 32]]), strides=[5, 6],
                     fmBased=True, imgSize=256.):
         anchorsAll = np.zeros((0, 4))
 
