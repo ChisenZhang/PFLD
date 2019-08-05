@@ -313,8 +313,33 @@ def focal_loss(targets, plogits):
     focal_weight = tf.where(targets[:, :, 1] == 1., 1. - tf.nn.softmax(plogits)[:, :, 1], tf.nn.softmax(plogits)[:, :, 1])
     focal_weight = alpha_factor * tf.pow(focal_weight, gamma)
     bce = tf.nn.softmax_cross_entropy_with_logits_v2(logits=plogits, labels=targets)
-    cls_loss = tf.reduce_sum(focal_weight * bce)
+    cls_loss = focal_weight * bce
     return cls_loss
+
+
+def hard_negative_mining(conf_loss, pos_ids, batch_size=32, mult=3, min_negs=10):
+    with tf.name_scope('hard_negative_mining'):
+        pos_ids = tf.unstack(pos_ids)
+        neg_ids = [tf.logical_not(p) for p in pos_ids]
+        conf_loss = tf.unstack(conf_loss)
+        loss_out = []
+        for c_i in range(batch_size):
+            c_pos_ids = pos_ids[c_i]
+            c_neg_ids = neg_ids[c_i]
+            c_num_neg = tf.cast(tf.reduce_sum(tf.cast(c_neg_ids, tf.float32)), tf.int32)
+            c_num_pos = tf.cast(tf.reduce_sum(tf.cast(c_pos_ids, tf.float32)), tf.int32)
+            c_conf_loss = conf_loss[c_i]
+            # c_l1_loss = l1_loss[c_i]
+            loss_conf_neg = tf.reshape(tf.boolean_mask(c_conf_loss, c_neg_ids),
+                                       [c_num_neg])  # Extract negative confidence losses only
+            loss_conf_pos = tf.reshape(tf.boolean_mask(c_conf_loss, c_pos_ids), [c_num_pos])
+            # loss_l1_pos = tf.reshape(tf.boolean_mask(c_l1_loss, c_pos_ids), [c_num_pos])
+            c_neg_cap = tf.cast(mult * c_num_pos, tf.int32)
+            c_neg_cap = tf.maximum(min_negs, c_neg_cap)  # Cap minimum negative value to min_negs
+            c_neg_cap = tf.minimum(c_neg_cap, c_num_neg)  # Cap minimum values to max # = anchor_len
+            loss_conf_k_neg, _ = tf.nn.top_k(loss_conf_neg, k=c_neg_cap, sorted=True)
+            loss_out.append(tf.concat((loss_conf_pos, loss_conf_k_neg), axis=0))
+        return tf.concat(loss_out, axis=0)
 
 
 def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttention=None, attention_gt=None, match_threshold=0.5,
@@ -338,6 +363,7 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         l1_loss = positive_check * tf.reduce_sum(l1_loss, axis=-1)  # Zero out L1 loss for negative boxes
 
         cls_loss = focal_loss(conf_true_oh, conf_preds)
+        cls_loss = hard_negative_mining(cls_loss, pos_ids, batch_size)
 
         # loss = (cls_loss + tf.reduce_sum(l1_loss))/n_pos
 
@@ -352,7 +378,7 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
                     attLoss += tmpLoss
             attLoss = attLoss/len(pAttention)
             # loss += attLoss
-        return tf.reduce_sum(l1_loss)/n_pos, cls_loss/n_cls, attLoss if attLoss is not None else 0. # /float(batch_size)
+        return tf.reduce_sum(l1_loss)/n_pos, tf.reduce_sum(cls_loss)/n_pos, attLoss if attLoss is not None else 0. # /float(batch_size)
 
 
 if __name__ == '__main__':
