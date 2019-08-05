@@ -127,11 +127,15 @@ class MobileNetV2(object):
                                            decay_steps=decay_step, end_learning_rate=1e-8,
                                            power=0.5, cycle=True)
             tf.summary.scalar('LR', self.lr)
-            self.loss = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size, locs_true=self.target_locs,
+            L1_loss, cls_loss, attLoss = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size, locs_true=self.target_locs,
                                     confs_true=self.target_confs,
                                     pAttention=[self.attention1, self.attention2],
                                     attention_gt=[self.target_attention1, self.target_attention2])
+            self.loss = L1_loss + cls_loss + attLoss if attLoss is not None else 0.
             self.loss += tf.losses.get_regularization_loss()  # Add regularisation
+            tf.summary.scalar('L1_loss', L1_loss)
+            tf.summary.scalar('cls_loss', cls_loss)
+            tf.summary.scalar('attLoss', attLoss)
             tf.summary.scalar('Loss', self.loss)
             self.extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(self.extra_update_ops):

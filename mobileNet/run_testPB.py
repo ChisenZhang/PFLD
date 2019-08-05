@@ -65,6 +65,7 @@ def freeze_graph_test(pb_path, im):
 
 def main(argv):
     pbModel_path = './models/pb/blazeFace_model_test.pb'
+    pbModel_path = r'C:\Users\17ZY-HPYKFD2\Downloads\dFServer\blazeFace_model_test.pb'
     WIDTH_DES = 256
     HEIGHT_DES = 256
     USE_NORM = True
@@ -82,7 +83,7 @@ def main(argv):
         # Loop through video data
         while ret == True:
             # ret, frame = vid_in.read()
-            frame = cv2.imread('./a.jpg')
+            frame = cv2.imread('./img_381.jpg')
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             if UPSCALE:
@@ -95,8 +96,9 @@ def main(argv):
             else:
                 r = WIDTH_DES / max(frame.shape[1], frame.shape[0])
                 dim_des = (int(WIDTH_DES), int(frame.shape[1] * r))
-                frame = cv2.resize(frame, (0, 0), fx=r, fy=r) # (WIDTH_DES, HEIGHT_DES))
-                frame = np.pad(frame, ((0, HEIGHT_DES - frame.shape[0]), (0, WIDTH_DES - frame.shape[1]), (0, 0)))
+                frame = cv2.resize(frame, (WIDTH_DES, HEIGHT_DES))
+                # frame = cv2.resize(frame, (0, 0), fx=r, fy=r) # (WIDTH_DES, HEIGHT_DES))
+                # frame = np.pad(frame, ((0, HEIGHT_DES - frame.shape[0]), (0, WIDTH_DES - frame.shape[1]), (0, 0)))
             # frame_padded = lighting_balance(frame)
             # frame_padded = cv2.copyMakeBorder(frame, 0, max(0, HEIGHT_DES - frame.shape[0]), 0, 0, cv2.BORDER_CONSTANT, value=(0,0,0))
             # pred_confs, pred_locs = model.test_iter(np.expand_dims(frame, axis = 0))

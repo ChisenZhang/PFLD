@@ -322,9 +322,13 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
     with tf.name_scope(scope):
         loc_preds = tf.reshape(pBoxes, (batch_size, -1, 4))
         conf_preds = tf.reshape(plogits, (batch_size, -1, 2))
+        conf_preds = tf.stop_gradient(conf_preds)
         loc_true = tf.reshape(locs_true, (batch_size, -1, 4))
         conf_true = tf.cast(tf.reshape(confs_true, (batch_size, -1)), tf.int32)
         conf_true_oh = tf.one_hot(conf_true, 2)
+
+        cls_check = tf.reshape(tf.cast(tf.greater_equal(conf_true, 0), tf.float32), (batch_size, tf.shape(loc_preds)[1]))
+        n_cls = tf.maximum(tf.reduce_sum(cls_check), 1)
 
         positive_check = tf.reshape(tf.cast(tf.equal(conf_true, 1), tf.float32), (batch_size, tf.shape(loc_preds)[1]))
         pos_ids = tf.cast(positive_check, tf.bool)
@@ -335,19 +339,20 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
 
         cls_loss = focal_loss(conf_true_oh, conf_preds)
 
-        loss = (cls_loss + tf.reduce_sum(l1_loss))/n_pos
+        # loss = (cls_loss + tf.reduce_sum(l1_loss))/n_pos
+
+        attLoss = None
         if pAttention is not None:
-            attLoss = None
             for i in range(len(pAttention)):
-                tmpLoss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i],
+                tmpLoss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i],
                                 labels=attention_gt[i])) / tf.cast((tf.shape(pAttention[i])[1]*tf.shape(pAttention[i])[2]), tf.float32)
                 if i == 0:
                     attLoss = tmpLoss
                 else:
                     attLoss += tmpLoss
             attLoss = attLoss/len(pAttention)
-            loss += attLoss
-        return loss/float(batch_size)
+            # loss += attLoss
+        return tf.reduce_sum(l1_loss)/n_pos, cls_loss/n_cls, attLoss if attLoss is not None else 0. # /float(batch_size)
 
 
 if __name__ == '__main__':

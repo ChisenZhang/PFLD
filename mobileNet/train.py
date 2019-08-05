@@ -34,7 +34,6 @@ sys.path.append('./dataLoader/WIDE_FACE')
 from PCModel import producer
 from WIDE_FACE.wider_voc import VOCDetection, AnnotationTransform
 from WIDE_FACE.data_augment import preproc
-from lossComput2 import faceDetLoss
 
 data_train_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/WIDER_FACE/'
 data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
@@ -171,13 +170,17 @@ if __name__ == '__main__':
 
         for k in range(MAX_EPOCH):
             random.shuffle(train_data.ids)
-            q = queue.Queue(3 * BATCH_SIZE)
+            q = queue.Queue(8 * BATCH_SIZE)
             prod = threading.Thread(target=producer, args=(q, train_data, BATCH_SIZE,))
             prod.start()
+            while not q.full():
+                continue
+            print('q.size:', q.qsize())
             flag = True
             while True:
                 if q.empty():
                     if flag:
+                        print('training wait for data...', step)
                         continue
                     else:
                         break
@@ -219,8 +222,10 @@ if __name__ == '__main__':
                         saver.save(sess, save_f + model_name+str(step), global_step=step)
                 except Exception as E:
                     print('run error:', E)
+                    prod.join()
                     exit(-1)
                 step += 1
+
             print('Saving epoch model...')
             saver.save(sess, save_f + model_name + str(step), global_step=step)
             print("epoch %d, steps %d" % (k, step))

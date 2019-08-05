@@ -97,6 +97,21 @@ class VOCDetection(object):
 
         return img, target
 
+    def process(self, img_id):
+        target = ET.parse(self._annopath % img_id[1]).getroot()
+        # print ("self._imgpath % image_id[0]", self._imgpath % img_id[0])
+        # print ("target: ", target)
+        img = cv2.imread(self._imgpath % img_id[0], cv2.IMREAD_COLOR)
+        height, width, _ = img.shape
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        if self.preproc is not None:
+            img, target = self.preproc(img, target)
+
+        return img, target
+
     def __len__(self):
         return len(self.ids)
 

@@ -7,7 +7,6 @@ producer consumer model
 
 import threading
 # from threading import Lock
-# import random
 import queue
 import numpy as np
 
