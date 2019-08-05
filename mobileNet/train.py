@@ -213,7 +213,7 @@ if __name__ == '__main__':
                     train_loss.append(loss)
                     # train_mAP_pred.append(mAP)
                     writer.add_summary(summary, step)
-                    if step%PRINT_FREQ == 0:
+                    if step % PRINT_FREQ == 0:
                         print("")
                         print('Iteration: ', step, end='')
                         print(' Mean train loss: ', np.mean(train_loss), end='')
@@ -231,7 +231,8 @@ if __name__ == '__main__':
                     if step % SAVE_FREQ == 0:
                         print('Saving model...')
                         saver.save(sess, save_f + model_name+str(step), global_step=step)
-                    if step != 0 and step%epoch_Steps == 0:
+                    if step != 0 and step % epoch_Steps == 0:
+                        step += 1
                         break
                 except Exception as E:
                     print('run error:', E)
