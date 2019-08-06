@@ -20,7 +20,6 @@ else:
     import xml.etree.ElementTree as ET
 
 import cv2
-import random
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "7"  # gpu编号
 config = tf.ConfigProto()
@@ -87,20 +86,6 @@ def dataProcess(img_id):
     img, target = preproc(img, target)
 
     return img, target
-
-def getBatch(examples, batch_size):
-    global globalExpIndex
-    num = len(examples)
-    if globalExpIndex + batch_size >= num:
-        globalExpIndex = 0
-        print('reset GEXPIndex:', globalExpIndex)
-        random.shuffle(examples)
-        return None, None
-    tmpBatch = examples[globalExpIndex:globalExpIndex+batch_size]
-    globalExpIndex += batch_size
-    print('GEXPIndex:', globalExpIndex)
-    return tmpBatch[0], tmpBatch[1]
-
 
 if __name__ == '__main__':
     np.set_printoptions(suppress=True)

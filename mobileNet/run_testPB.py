@@ -98,7 +98,7 @@ def main(argv):
                 dim_des = (int(WIDTH_DES), int(frame.shape[1] * r))
                 # frame = cv2.resize(frame, (WIDTH_DES, HEIGHT_DES))
                 frame = cv2.resize(frame, (0, 0), fx=r, fy=r) # (WIDTH_DES, HEIGHT_DES))
-                frame = np.pad(frame, ((0, HEIGHT_DES - frame.shape[0]), (0, WIDTH_DES - frame.shape[1]), (0, 0)))
+                frame = np.pad(frame, ((0, HEIGHT_DES - frame.shape[0]), (0, WIDTH_DES - frame.shape[1]), (0, 0)), mode='constant')
             # frame_padded = lighting_balance(frame)
             # frame_padded = cv2.copyMakeBorder(frame, 0, max(0, HEIGHT_DES - frame.shape[0]), 0, 0, cv2.BORDER_CONSTANT, value=(0,0,0))
             # pred_confs, pred_locs = model.test_iter(np.expand_dims(frame, axis = 0))

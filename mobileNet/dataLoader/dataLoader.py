@@ -57,7 +57,7 @@ class DataService(object):
                         random.shuffle(self.source_p.ids)
                         self.GIndex.value = 0
                     tmpIndex = self.GIndex.value
-                    print('worker:', i, ', Index:', tmpIndex)
+                    # print('worker:', i, ', Index:', tmpIndex)
                     self.GIndex.value += self.batch_size
                 imgs, boxes = self.getBatch(tmpIndex)
                 feedFlag = False

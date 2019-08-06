@@ -363,22 +363,22 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         l1_loss = positive_check * tf.reduce_sum(l1_loss, axis=-1)  # Zero out L1 loss for negative boxes
 
         cls_loss = focal_loss(conf_true_oh, conf_preds)
-        cls_loss = hard_negative_mining(cls_loss, pos_ids, batch_size)
+        cls_loss = cls_check*cls_loss
+        # cls_loss = hard_negative_mining(cls_loss, pos_ids, batch_size)
 
         # loss = (cls_loss + tf.reduce_sum(l1_loss))/n_pos
 
         attLoss = None
         if pAttention is not None:
             for i in range(len(pAttention)):
-                tmpLoss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i],
-                                labels=attention_gt[i])) / tf.cast((tf.shape(pAttention[i])[1]*tf.shape(pAttention[i])[2]), tf.float32)
+                tmpLoss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i], labels=attention_gt[i]))
                 if i == 0:
                     attLoss = tmpLoss
                 else:
                     attLoss += tmpLoss
             attLoss = attLoss/len(pAttention)
             # loss += attLoss
-        return tf.reduce_sum(l1_loss)/n_pos, tf.reduce_sum(cls_loss)/n_pos, attLoss if attLoss is not None else 0. # /float(batch_size)
+        return tf.reduce_sum(l1_loss)/n_pos, tf.reduce_sum(cls_loss)/n_cls, attLoss if attLoss is not None else 0. # /float(batch_size)
 
 
 if __name__ == '__main__':
@@ -401,5 +401,5 @@ if __name__ == '__main__':
                     plogits[i][0] = random.random()
                     plogits[i][1] = 1 - plogits[i][0]
     # boxes = tf.constant(boxes.tolist())
-    anchorFillter(anchors, boxes, 0., 0.)
+    anchorFillter(anchors, gBoxes, 0., 0.)
     # faceDetLoss(plogits, boxes, anchors, gBoxes, match_threshold=0., batch_size=1)
