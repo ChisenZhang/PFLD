@@ -52,7 +52,7 @@ class Anchors(object):
     #
     #     return all_anchors
 
-    def get_anchors(self, fmSizes, ratios=np.array([1., 1.5]), scales=np.array([[2], [8, 16, 32]]), strides=[5, 6],
+    def get_anchors(self, fmSizes, ratios=np.array([1., 1.5]), scales=np.array([[2], [8, 16, 32]]), strides=[4, 5],
                     fmBased=True, imgSize=256.):
         anchorsAll = np.zeros((0, 4))
 
@@ -217,5 +217,17 @@ class Anchors(object):
 
 if __name__ == '__main__':
     anchorsC = Anchors()
-    anchors = anchorsC.get_anchors(fmSizes=[(16, 16), (8, 8)], fmBased=True)
+    anchors = anchorsC.get_anchors(fmSizes=[(16, 16), (8, 8)], fmBased=True, imgSize=1)
+    import random, cv2
+    img = cv2.imread('./a.jpg')
+    img = cv2.resize(img, (256, 256))
+    for i in range(5):
+        index = random.randint(0, anchors.shape[0] - 1)
+        R = random.randint(0, 255)
+        G = random.randint(0, 255)
+        B = random.randint(0, 255)
+        box = anchors[index]
+        print(i, box, int(box[2]-box[0]), int(box[3] - box[1]))
+        cv2.rectangle(img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (B, G, R), 2)
+    cv2.imwrite('./tmp.jpg', img)
     print('abc')

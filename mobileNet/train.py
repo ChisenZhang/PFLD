@@ -114,14 +114,14 @@ if __name__ == '__main__':
     train_data = VOCDetection(data_train_dir, preproc(IM_S, 0, 1/255.), AnnotationTransform())
     print('train_wideFaceNum:', len(train_data))
 
-    data_loader = DataService(train_data, BATCH_SIZE, 32, workers=5)
+    data_loader = DataService(train_data, BATCH_SIZE, 32, workers=3)
     data_loader.start()
     epoch_Steps = len(train_data)//BATCH_SIZE
 
     print('Building model...')
     # x = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
     fd_model = MobileNetV2(num_classes=2, batch_size=BATCH_SIZE, anchorsLen=anchors.shape[0])
-    fd_model.blazeModel(learning_rate, int((len(train_data) / BATCH_SIZE) / 4))
+    fd_model.blazeModel(learning_rate, decay_step=int(len(train_data) / BATCH_SIZE))
 
     # Summarize in tensorboard
     # if summarize:
