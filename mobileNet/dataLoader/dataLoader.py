@@ -9,6 +9,7 @@ import multiprocessing
 import threading
 import random
 import numpy as np
+import time
 
 class DataService(object):
     def __init__(self, source_p, batch_size=32, QMaxLen=32, workers=3):
@@ -17,7 +18,7 @@ class DataService(object):
         self.q = multiprocessing.Queue(QMaxLen)
         self.lock = multiprocessing.Lock()
         self.workers = workers
-        self.GIndex = 0
+        self.GIndex = multiprocessing.Value('i', 0)
 
     def start(self):
         print('Starting parallelised augmentation...')
@@ -40,7 +41,7 @@ class DataService(object):
         print('Spawning', self.workers, 'workers')
         self.proc_lst = []
         for i in range(self.workers):
-            p = multiprocessing.Process(target=self.worker)
+            p = multiprocessing.Process(target=self.worker, args=(i, ))
             self.proc_lst.append(p)
             p.start()
         # while self.is_running:
@@ -48,22 +49,35 @@ class DataService(object):
         [p.join() for p in self.proc_lst]
         self.proc_lst = []
 
-    def worker(self):
+    def worker(self, i):
         while True:
             try:
                 with self.lock:
-                    if self.GIndex >= len(self.source_p):
+                    if self.GIndex.value >= len(self.source_p):
                         random.shuffle(self.source_p.ids)
-                        self.GIndex = 0
-                imgs, boxes = self.getBatch(self.GIndex)
+                        self.GIndex.value = 0
+                    tmpIndex = self.GIndex.value
+                    print('worker:', i, ', Index:', tmpIndex)
+                    self.GIndex.value += self.batch_size
+                imgs, boxes = self.getBatch(tmpIndex)
+                feedFlag = False
                 with self.lock:
                     if imgs is None:
                         random.shuffle(self.source_p.ids)
-                        self.GIndex = 0
+                        self.GIndex.value = 0
                         continue
-                    self.GIndex += self.batch_size
                     if not self.q.full():
+                        feedFlag = True
                         self.q.put(tuple([imgs, boxes]))
+
+                # 队满延时等待
+                while not feedFlag:
+                    time.sleep(0.5)
+                    with self.lock:
+                        if not self.q.full():
+                            feedFlag = True
+                            self.q.put(tuple([imgs, boxes]))
+
             except AssertionError:
                 print('Assertion Error (edge-case) - skipping...')
 
