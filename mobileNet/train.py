@@ -21,8 +21,6 @@ else:
 
 import cv2
 import random
-import queue
-import threading
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "7"  # gpu编号
 config = tf.ConfigProto()
@@ -31,7 +29,6 @@ config.gpu_options.allow_growth = True # 设置最小gpu使用量
 sys.path.append('./dataLoader')
 sys.path.append('./dataLoader/WIDE_FACE')
 
-from PCModel import producer
 from WIDE_FACE.wider_voc import VOCDetection, AnnotationTransform
 from WIDE_FACE.data_augment import preproc
 from dataLoader import DataService
@@ -176,29 +173,8 @@ if __name__ == '__main__':
         for k in range(MAX_EPOCH):
             print('epoch:', k)
 
-            # random.shuffle(train_data.ids)
-            # q = queue.Queue(8 * BATCH_SIZE)
-            # prod = threading.Thread(target=producer, args=(q, train_data, BATCH_SIZE,))
-            # prod.start()
-            # while not q.full():
-            #     continue
-            # print('q.size:', q.qsize())
-
             flag = True
             while True:
-                # if q.empty():
-                #     if flag:
-                #         print('training wait for data...', step)
-                #         continue
-                #     else:
-                #         break
-                # data = q.get()
-
-                # if data is None:
-                #     flag = False
-                #     continue
-                # imgs, lbls = data
-
                 imgs, lbls = data_loader.pop()
 
                 if imgs is None:
@@ -207,8 +183,6 @@ if __name__ == '__main__':
                 print('Iteration ', step, ' ', end='\r')
 
                 try:
-                    # tmpLoss = faceDetLoss(fd_model.cls, fd_model.reg, anchors=anchors, gBoxes=lbls, pAttention=fd_model.attention)
-                    # loss = sess.run([tmpLoss], feed_dict={fd_model.input: imgs, })
                     loss, summary = fd_model.getTrainLoss(sess, imgs, anchors, lbls)
                     train_loss.append(loss)
                     # train_mAP_pred.append(mAP)
@@ -236,7 +210,6 @@ if __name__ == '__main__':
                         break
                 except Exception as E:
                     print('run error:', E)
-                    # prod.join()
                     data_loader.stop()
                     exit(-1)
                 step += 1
