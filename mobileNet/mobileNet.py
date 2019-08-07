@@ -27,6 +27,8 @@ class MobileNetV2(object):
         self.target_attention1 = tf.placeholder(tf.float32, shape=(None, 16, 16), name='target_attention1')
         self.target_attention2 = tf.placeholder(tf.float32, shape=(None, 8, 8), name='target_attention2')
         self.GStep = tf.Variable(0, trainable=False)
+        self.attention1 = None
+        self.attention2 = None
 
     def model(self, x):
         with tf.variable_scope('MobileNet'):
@@ -108,19 +110,19 @@ class MobileNetV2(object):
             output1 = self.BlazeBlock(output, 48, 1, 'BlazeBlock9', 2, True, 24)
             output = self.BlazeBlock(output1, 48, 1, 'BlazeBlock10', 1, True, 24)
             output2 = self.BlazeBlock(output, 64, 1, 'BlazeBlock11', 2, True, 32)
-            out1 = self.inceptionBlock(output1)
-            out1, attention1 = self.attentionBlock(out1, scope='attentionBlock1')
-            cls1, reg1 = self.clsAndReg(out1, self.num_classes, 2, scope='clsAndReg1')
-            out2 = self.inceptionBlock(output2)
-            out2, attention2 = self.attentionBlock(out2, scope='attentionBlock2')
-            cls2, reg2 = self.clsAndReg(out2, self.num_classes, 6, scope='clsAndReg2')
+            # out1 = self.inceptionBlock(output1)
+            # out1, attention1 = self.attentionBlock(out1, scope='attentionBlock1')
+            cls1, reg1 = self.clsAndReg(output1, self.num_classes, 2, scope='clsAndReg1')
+            # out2 = self.inceptionBlock(output2)
+            # out2, attention2 = self.attentionBlock(out2, scope='attentionBlock2')
+            cls2, reg2 = self.clsAndReg(output2, self.num_classes, 6, scope='clsAndReg2')
             self.cls = tf.concat((cls1, cls2), axis=-2)
             self.cls = tf.reshape(self.cls, [self.batch_size, self.anchorsLen, self.num_classes], name='cls')
             self.prob = tf.nn.softmax(self.cls, name='probs')
             self.reg = tf.concat((reg1, reg2), axis=-2)
             self.reg = tf.reshape(self.reg, [self.batch_size, self.anchorsLen, 4], name='reg')
-            self.attention1 = tf.squeeze(attention1, name='attention1')
-            self.attention2 = tf.squeeze(attention2, name='attention2')
+            # self.attention1 = tf.squeeze(attention1, name='attention1')
+            # self.attention2 = tf.squeeze(attention2, name='attention2')
 
             # 多项式衰减 往复
             self.lr = tf.train.polynomial_decay(learning_rate=learning_rate, global_step=self.GStep,
@@ -384,10 +386,11 @@ class MobileNetV2(object):
     # 返回loss
     def getTrainLoss(self, sess, imgs, anchors, gBoxes):
         locs, confs = encode_batch(anchors, gBoxes, 0.3, 0.5)
-        attention1, attention2 = generateAttentionMap(self.batch_size, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
-        _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,
-                                                self.target_attention1: attention1, self.target_attention2: attention2})
-
+        # attention1, attention2 = generateAttentionMap(self.batch_size, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
+        # _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,
+        #                                         self.target_attention1: attention1, self.target_attention2: attention2})
+        _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr],
+                                      feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs})
         return loss, merged
 
 

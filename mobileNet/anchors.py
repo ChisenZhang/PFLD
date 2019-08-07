@@ -220,14 +220,20 @@ if __name__ == '__main__':
     anchors = anchorsC.get_anchors(fmSizes=[(16, 16), (8, 8)], fmBased=True, imgSize=1)
     import random, cv2
     img = cv2.imread('./a.jpg')
-    img = cv2.resize(img, (256, 256))
-    for i in range(5):
-        index = random.randint(0, anchors.shape[0] - 1)
+    tmpImg = cv2.resize(img, (256, 256))
+    for i in range(anchors.shape[0]):
+        # index = random.randint(0, anchors.shape[0] - 1)
+        index = i
         R = random.randint(0, 255)
         G = random.randint(0, 255)
         B = random.randint(0, 255)
         box = anchors[index]
         print(i, box, int(box[2]-box[0]), int(box[3] - box[1]))
-        cv2.rectangle(img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (B, G, R), 2)
+        cv2.rectangle(tmpImg, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (B, G, R), 2)
+        if i % 10 == 0:
+            cv2.imshow('tmpImg', tmpImg)
+            cv2.waitKey(0)
+        if i == 511:
+            tmpImg = cv2.resize(img, (256, 256))
     cv2.imwrite('./tmp.jpg', img)
     print('abc')
