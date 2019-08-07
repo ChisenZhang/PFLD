@@ -379,19 +379,19 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
 
         # loss = (cls_loss + tf.reduce_sum(l1_loss))/n_pos
 
-        attLoss = 0.
-        if pAttention is not None:
-            for i in range(len(pAttention)):
-                if not pAttention[i]:
-                    continue
-                tmpLoss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i], labels=attention_gt[i]))
-                if i == 0:
-                    attLoss = tmpLoss
-                else:
-                    attLoss += tmpLoss
-            attLoss = attLoss/len(pAttention)
+        # attLoss = 0.
+        # if pAttention is not None:
+        #     for i in range(len(pAttention)):
+        #         if not pAttention[i]:
+        #             continue
+        #         tmpLoss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i], labels=attention_gt[i]))
+        #         if i == 0:
+        #             attLoss = tmpLoss
+        #         else:
+        #             attLoss += tmpLoss
+        #     attLoss = attLoss/len(pAttention)
             # loss += attLoss
-        return tf.reduce_sum(l1_loss)/n_pos, tf.reduce_sum(cls_loss)/n_pos, attLoss if attLoss is not None else 0. # /float(batch_size)
+        return tf.reduce_sum(l1_loss)/n_pos, tf.reduce_sum(cls_loss)/n_pos # , attLoss if attLoss is not None else 0. # /float(batch_size)
 
 
 if __name__ == '__main__':
