@@ -133,10 +133,9 @@ class MobileNetV2(object):
             #                         confs_true=self.target_confs,
             #                         pAttention=[self.attention1, self.attention2],
             #                         attention_gt=[self.target_attention1, self.target_attention2])
-            L1_loss, cls_loss = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size,
+            L1_loss, cls_loss, _ = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size,
                                                      locs_true=self.target_locs,
-                                                     confs_true=self.target_confs
-                                                     )
+                                                     confs_true=self.target_confs)
             self.loss = L1_loss + cls_loss # + attLoss if attLoss is not None else 0.
             self.loss += tf.losses.get_regularization_loss()  # Add regularisation
             tf.summary.scalar('L1_loss', L1_loss)

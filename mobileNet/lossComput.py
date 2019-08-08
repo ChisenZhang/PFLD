@@ -187,9 +187,9 @@ def rerec(bboxA):
 def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
     gBoxes = np.array(gBoxes)
     ious = compute_iou_np(anchors, gBoxes)
-    # 每个anchor的最大IOU及index
+    # 每个box的最大IOU及相应box 的 index
     # max_iou, max_iou_ids = np.max(ious, axis=0), np.argmax(ious, axis=0)
-    # 每个box的最大IOU及index
+    # 每个anchor的最大IOU及相应anchor的index
     max_obj_iou, max_obj_iou_ids = np.max(ious, axis=1), np.argmax(ious, axis=1)
 
     targets = np.ones((anchors.shape[0], 1), dtype=np.int32)*-1
@@ -199,13 +199,15 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
     max_obj_iou_ids = np.squeeze(max_obj_iou_ids)
 
     targets[max_obj_iou < minThresh] = 0
-    pos_inds = np.where(max_obj_iou >= maxThresh)
+    # targets[max_obj_iou >= maxThresh] = 1
+    max_obj_iou_ids[max_obj_iou < maxThresh] = -1
+    pos_inds = max_obj_iou_ids[max_obj_iou_ids >= 0]
     # pos_inds = np.squeeze(pos_inds)
-    targets[pos_inds] = 1
+    targets[max_obj_iou_ids >= 0] = 1
     print('match num:', gBoxes.shape, sum(targets == 1), sum(targets == 0))
-    if pos_inds[0].size > 0:
-        assertBoxes = gBoxes[max_obj_iou_ids][pos_inds]
-        assertAnchors = anchors[pos_inds]
+    if pos_inds.size > 0:
+        assertBoxes = gBoxes[pos_inds]
+        assertAnchors = anchors[max_obj_iou_ids >= 0, :]
 
         aC = np.array(assertAnchors[:, 2:] + assertAnchors[:, :2]).astype(np.float32)/2
         aWH = np.array(assertAnchors[:, 2:] - assertAnchors[:, :2]).astype(np.float32)
@@ -218,7 +220,7 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
 
         out = np.concatenate((cxy*10., wh*5.), axis=-1)
 
-        locs[pos_inds] = out
+        locs[max_obj_iou_ids >= 0] = out
 
     return locs, np.squeeze(targets)
 
@@ -379,19 +381,19 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
 
         # loss = (cls_loss + tf.reduce_sum(l1_loss))/n_pos
 
-        # attLoss = 0.
-        # if pAttention is not None:
-        #     for i in range(len(pAttention)):
-        #         if not pAttention[i]:
-        #             continue
-        #         tmpLoss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i], labels=attention_gt[i]))
-        #         if i == 0:
-        #             attLoss = tmpLoss
-        #         else:
-        #             attLoss += tmpLoss
-        #     attLoss = attLoss/len(pAttention)
+        attLoss = 0.
+        if pAttention is not None:
+            for i in range(len(pAttention)):
+                if not pAttention[i]:
+                    continue
+                tmpLoss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pAttention[i], labels=attention_gt[i]))
+                if i == 0:
+                    attLoss = tmpLoss
+                else:
+                    attLoss += tmpLoss
+            attLoss = attLoss/len(pAttention)
             # loss += attLoss
-        return tf.reduce_sum(l1_loss)/n_pos, tf.reduce_sum(cls_loss)/n_pos # , attLoss if attLoss is not None else 0. # /float(batch_size)
+        return tf.reduce_sum(l1_loss)/n_pos, tf.reduce_sum(cls_loss)/n_pos, attLoss if attLoss is not None else 0. # /float(batch_size)
 
 
 if __name__ == '__main__':
@@ -414,5 +416,5 @@ if __name__ == '__main__':
                     plogits[i][0] = random.random()
                     plogits[i][1] = 1 - plogits[i][0]
     # boxes = tf.constant(boxes.tolist())
-    anchorFillter(anchors, gBoxes, 0., 0.)
+    anchorFillter(anchors, gBoxes, 0., 0.01)
     # faceDetLoss(plogits, boxes, anchors, gBoxes, match_threshold=0., batch_size=1)
