@@ -100,7 +100,7 @@ def boxInArea(area, box):
     else:
         if (tt - t)/h < borderThresh and (d - td) / h < borderThresh and (tl - l)/w < borderThresh and \
                 (r - tr)/w < borderThresh and tw*th/(w*h) > areaThresh:
-            return True, [tl - l, tt - t, tr - r, td - d]
+            return True, np.array([tl - area[0], tt - area[1], tr - area[0], td - area[1]])
         else:
             return False, None
 
@@ -141,8 +141,6 @@ def _cropFace(image, boxes, labels, img_dim):
             box = boxes[k]
             flag, newBox = boxInArea(roi, box)
             if flag and not boxTooSmall(newBox, r, minLen):
-                image = image[newBox[1]:newBox[3], newBox[0]:newBox[2]]
-                image = cv2.resize(image, (img_dim, img_dim))
                 tmpBoxes.append(newBox)
                 tmpLabels.append(labels[k])
             else:
@@ -151,9 +149,12 @@ def _cropFace(image, boxes, labels, img_dim):
         if not tmpBoxes:
             continue
 
+        image_t = image[roi[1]:roi[3], roi[0]:roi[2]]
+        image_t = cv2.resize(image_t, (img_dim, img_dim))
+
         pad_image_flag = False
 
-        return image, np.array(tmpBoxes), np.array(tmpLabels), pad_image_flag
+        return image_t, np.array(tmpBoxes), np.array(tmpLabels), pad_image_flag
     return image, boxes, labels, pad_image_flag
 
 def _distort(image):
