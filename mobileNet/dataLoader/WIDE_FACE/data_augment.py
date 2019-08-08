@@ -2,7 +2,10 @@ import cv2
 import numpy as np
 import random
 # from box_utils import matrix_iof
-minLen = 32.
+minLen = 32.*0.9
+import uuid
+import os
+
 
 def matrix_iof(a, b):
     """
@@ -74,14 +77,16 @@ def _crop(image, boxes, labels, img_dim):
         return image_t, boxes_t, labels_t, pad_image_flag
     return image, boxes, labels, pad_image_flag
 
+
 def boxTooSmall(box, r, threshold):
     if (box[3] - box[1])*r < threshold and (box[2] - box[0])*r < threshold:
         return True
     return False
 
+
 def boxInArea(area, box):
-    borderThresh = 0.2
-    areaThresh = 0.4
+    borderThresh = 0.3 # 边缘超出区域的阈值
+    areaThresh = 0.4 # 面积阈值
     l, t, r, d = box
     w, h = r - l, d - t
     tl, tt, tr, td = box
@@ -98,11 +103,13 @@ def boxInArea(area, box):
     if tw <= 0 or th <= 0: # 不重合
         return False, None
     else:
-        if (tt - t)/h < borderThresh and (d - td) / h < borderThresh and (tl - l)/w < borderThresh and \
-                (r - tr)/w < borderThresh and tw*th/(w*h) > areaThresh:
+        if (tt - t)/h < borderThresh and (d - td) / h < borderThresh and (tt - t + d - td)/h < borderThresh and \
+                (tl - l)/w < borderThresh and (r - tr)/w < borderThresh and (tl - l + r - tr)/w < borderThresh and \
+                tw*th/(w*h) > areaThresh:
             return True, np.array([tl - area[0], tt - area[1], tr - area[0], td - area[1]])
         else:
             return False, None
+
 
 def _cropFace(image, boxes, labels, img_dim):
     h, w, _ = image.shape
@@ -120,7 +127,7 @@ def _cropFace(image, boxes, labels, img_dim):
         # 过小
         if tw < img_dim//4:
             continue
-        r = img_dim / tw
+        r = img_dim / float(tw)
 
         if tw == w:
             l = 0
@@ -141,7 +148,7 @@ def _cropFace(image, boxes, labels, img_dim):
             box = boxes[k]
             flag, newBox = boxInArea(roi, box)
             if flag and not boxTooSmall(newBox, r, minLen):
-                tmpBoxes.append(newBox)
+                tmpBoxes.append(newBox*r)
                 tmpLabels.append(labels[k])
             else:
                 continue
@@ -156,6 +163,7 @@ def _cropFace(image, boxes, labels, img_dim):
 
         return image_t, np.array(tmpBoxes), np.array(tmpLabels), pad_image_flag
     return image, boxes, labels, pad_image_flag
+
 
 def _distort(image):
 
@@ -274,12 +282,21 @@ def _resize_subtract_mean(image, insize, rgb_mean, rgb_norm):
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
+def drawBoxes(image, boxes, storePath):
+    for box in boxes:
+        cv2.rectangle(image, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 255, 0), 3)
+        cv2.putText(image, str(int(box[2] - box[0])), (int(box[0]), int(box[1])), cv2.FONT_HERSHEY_SIMPLEX, 1,
+                    (0, 255, 255), 2, cv2.LINE_AA)
+    cv2.imwrite(storePath, image)
+
+
 class preproc(object):
 
-    def __init__(self, img_dim, rgb_means, rgb_norm):
+    def __init__(self, img_dim, rgb_means, rgb_norm, drawLable=False):
         self.img_dim = img_dim
         self.rgb_means = rgb_means
         self.rgb_norm = rgb_norm
+        self.draw = drawLable
 
     def __call__(self, image, targets):
         assert targets.shape[0] > 0, "this image does not have gt"
@@ -295,14 +312,29 @@ class preproc(object):
         image_t = _pad_to_square(image_t, self.rgb_means, pad_image_flag)
         image_t, boxes_t = _mirror(image_t, boxes_t)
         height, width, _ = image_t.shape
+
+        if self.draw:
+            if image_t.shape[0] != self.img_dim:
+                img = cv2.resize(image_t, (self.img_dim, self.img_dim))
+            else:
+                img = image_t.copy()
+
         image_t = _resize_subtract_mean(image_t, self.img_dim, self.rgb_means, self.rgb_norm)
         boxes_t[:, 0::2] /= width
         boxes_t[:, 1::2] /= height
-        delInds = np.where(np.logical_or(boxes_t[:, 2]*float(self.img_dim) < minLen, boxes_t[:, 3]*float(self.img_dim) < minLen))
+        delInds = np.where(np.logical_and((boxes_t[:, 2] - boxes_t[:, 0])*self.img_dim < minLen, (boxes_t[:, 3] - boxes_t[:, 1])*self.img_dim < minLen))
         boxes_t = np.delete(boxes_t, np.squeeze(delInds), axis=0)
         labels_t = np.delete(labels_t, np.squeeze(delInds), axis=0)
-        if boxes_t.shape[0] < 1:
+        if boxes_t.size < 1:
             return None, None
+
+        if self.draw:
+            storePath = './tmpImgs'
+            if not os.path.exists(storePath):
+                os.mkdir(storePath)
+            num = len(os.listdir(storePath))
+            if num < 12600:
+                drawBoxes(img.astype(np.int32), boxes_t*self.img_dim, os.path.join(storePath, str(uuid.uuid4()) + '.jpg'))
 
         labels_t = np.expand_dims(labels_t, 1)
         targets_t = np.hstack((boxes_t, labels_t))

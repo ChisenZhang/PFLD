@@ -397,24 +397,23 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
 
 
 if __name__ == '__main__':
-    anchors = np.zeros(shape=(25, 4), dtype=np.float32)
+    anchors = np.zeros(shape=(250, 4), dtype=np.float32)
     boxes = np.ones((25, 4), dtype=np.float32)
     gBoxes = np.ones((3, 4), dtype=np.float32)
     plogits = np.zeros(shape=[25, 2], dtype=np.float32)
     import random
-    for i in range(30):
+    for i in range(250):
         for j in range(4):
             if i < 3:
                 gBoxes[i][j] = random.random()
-            if i >= 25:
-                pass
-                # boxes[0][i][j] = random.random()
-            else:
+            if i < 25:
                 boxes[i][j] = random.random()
-                anchors[i][j] = random.random()
                 if j == 0:
                     plogits[i][0] = random.random()
                     plogits[i][1] = 1 - plogits[i][0]
+            else:
+                anchors[i][j] = random.random()
+
     # boxes = tf.constant(boxes.tolist())
     anchorFillter(anchors, gBoxes, 0., 0.01)
     # faceDetLoss(plogits, boxes, anchors, gBoxes, match_threshold=0., batch_size=1)

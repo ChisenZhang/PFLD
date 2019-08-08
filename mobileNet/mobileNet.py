@@ -124,6 +124,14 @@ class MobileNetV2(object):
             # self.attention1 = tf.squeeze(attention1, name='attention1')
             # self.attention2 = tf.squeeze(attention2, name='attention2')
 
+            # self.boundBoxes = tf.concat([self.target_locs[:, :, 0] - self.target_locs[:, :, 2]/2,
+            #                           self.target_locs[:, :, 1] - self.target_locs[:, :, 3]/2,
+            #                           self.target_locs[:, :, 0] + self.target_locs[:, :, 2] / 2,
+            #                           self.target_locs[:, :, 1] + self.target_locs[:, :, 3] / 2], axis=-1)
+            # self.boundBoxes = tf.reshape(self.boundBoxes, shape=[32, -1, 4])
+            # self.drawImage = tf.image.draw_bounding_boxes(self.input, self.boundBoxes)
+            tf.summary.image("input_img", self.input, max_outputs=6)
+
             # 多项式衰减 往复
             self.lr = tf.train.polynomial_decay(learning_rate=learning_rate, global_step=self.GStep,
                                            decay_steps=decay_step, end_learning_rate=1e-8,
