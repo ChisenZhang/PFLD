@@ -116,11 +116,13 @@ class MobileNetV2(object):
             # out2 = self.inceptionBlock(output2)
             # out2, attention2 = self.attentionBlock(out2, scope='attentionBlock2')
             cls2, reg2 = self.clsAndReg(output2, self.num_classes, 6, scope='clsAndReg2')
-            self.cls = tf.concat((cls1, cls2), axis=-2)
-            self.cls = tf.reshape(self.cls, [self.batch_size, self.anchorsLen, self.num_classes], name='cls')
+            self.cls = tf.concat((tf.reshape(cls1, [self.batch_size, -1, self.num_classes]),
+                                  tf.reshape(cls2, [self.batch_size, -1, self.num_classes])), axis=-2, name='cls')
+            # self.cls = tf.reshape(self.cls, [self.batch_size, self.anchorsLen, self.num_classes], name='cls')
             self.prob = tf.nn.softmax(self.cls, name='probs')
-            self.reg = tf.concat((reg1, reg2), axis=-2)
-            self.reg = tf.reshape(self.reg, [self.batch_size, self.anchorsLen, 4], name='reg')
+            self.reg = tf.concat((tf.reshape(reg1, [self.batch_size, -1, 4]),
+                                  tf.reshape(reg2, [self.batch_size, -1, 4])), axis=-2, name='reg')
+            # self.reg = tf.reshape(self.reg, [self.batch_size, self.anchorsLen, 4], name='reg')
             # self.attention1 = tf.squeeze(attention1, name='attention1')
             # self.attention2 = tf.squeeze(attention2, name='attention2')
 
