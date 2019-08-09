@@ -232,11 +232,11 @@ def decode(anchor_boxes, locs, confs, min_conf=0.05, keep_top=400, nms_thresh=0.
     centers_a = np.array(anchor_boxes[:, 2:] + anchor_boxes[:, :2]) / 2
     w_h_a = np.array(anchor_boxes[:, 2:] - anchor_boxes[:, :2])
 
-    cxcy_in = locs[:, :2]
-    wh_in = locs[:, 2:]
+    cxcy_in = locs[:, :2]/10.
+    wh_in = locs[:, 2:]/5.
 
-    wh = (np.exp(wh_in) * w_h_a)/5.
-    cxcy = (cxcy_in * w_h_a + centers_a)/10.
+    wh = np.exp(wh_in) * w_h_a
+    cxcy = cxcy_in * w_h_a + centers_a
 
     boxes_out = np.concatenate([cxcy - wh / 2, cxcy + wh / 2], axis=-1)
 

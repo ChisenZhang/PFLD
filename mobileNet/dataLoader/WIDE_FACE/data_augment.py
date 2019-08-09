@@ -322,7 +322,7 @@ class preproc(object):
         image_t = _resize_subtract_mean(image_t, self.img_dim, self.rgb_means, self.rgb_norm)
         boxes_t[:, 0::2] /= width
         boxes_t[:, 1::2] /= height
-        delInds = np.where(np.logical_and((boxes_t[:, 2] - boxes_t[:, 0])*self.img_dim < minLen, (boxes_t[:, 3] - boxes_t[:, 1])*self.img_dim < minLen))
+        delInds = np.where(np.logical_or((boxes_t[:, 2] - boxes_t[:, 0])*self.img_dim < minLen, (boxes_t[:, 3] - boxes_t[:, 1])*self.img_dim < minLen))
         boxes_t = np.delete(boxes_t, np.squeeze(delInds), axis=0)
         labels_t = np.delete(labels_t, np.squeeze(delInds), axis=0)
         if boxes_t.size < 1:

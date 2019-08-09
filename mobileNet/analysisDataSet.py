@@ -6,10 +6,6 @@
 '''
 
 import sys
-if sys.version_info[0] == 2:
-    import xml.etree.cElementTree as ET
-else:
-    import xml.etree.ElementTree as ET
 
 import cv2
 
