@@ -9,7 +9,7 @@ import sys
 from anchors import Anchors
 import cv2
 import numpy as np
-from lossComput import compute_iou_np
+from lossComput import compute_iou_np, non_max_suppression
 import os, uuid
 import random
 
@@ -77,7 +77,7 @@ def anchorFillter_test(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
     return locs, np.squeeze(targets), pos_inds
 
 
-def decode_test(anchor_boxes, locs):
+def decode_test(anchor_boxes, locs, nms_thresh=0.3):
     # NOTE: confs is a N x 2 matrix
     # global SCALE_FACTOR
 
@@ -91,7 +91,8 @@ def decode_test(anchor_boxes, locs):
     cxcy = cxcy_in * w_h_a + centers_a
 
     boxes_out = np.concatenate([cxcy - wh / 2, cxcy + wh / 2], axis=-1)
-
+    keep = non_max_suppression(boxes_out, nms_thresh)
+    boxes_out = boxes_out[keep]
     return boxes_out
 
 def decode_batch_test(anchors, locs):
