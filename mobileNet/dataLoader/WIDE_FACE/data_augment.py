@@ -111,6 +111,24 @@ def boxInArea(area, box):
             return False, None
 
 
+def mosaic(selected_image, nsize=3):
+    rows, cols = selected_image.shape
+    dist = selected_image.copy()
+    # 划分小方块，每个小方块填充随机颜色
+    for y in range(0, rows, nsize):
+        for x in range(0, cols, nsize):
+            dist[y:y+nsize, x:x+nsize] = (np.random.randint(0, 255))
+    return dist
+
+
+def fillDelArea(image, dBoxes):
+    for box in dBoxes:
+        image_t = image[int(box[1]):int(box[3]), int(box[0]):int(box[2])]
+        ave = image_t.mean()
+        tmp = np.ones_like(image_t, dtype=np.float32)*ave
+        image[int(box[1]):int(box[3]), int(box[0]):int(box[2])] = tmp
+
+
 def _cropFace(image, boxes, labels, img_dim):
     h, w, _ = image.shape
     pad_image_flag = True
@@ -143,6 +161,7 @@ def _cropFace(image, boxes, labels, img_dim):
         # check box
         tmpBoxes = []
         tmpLabels = []
+        delBoxes = []
         # 是不是在区域中，是不是过小
         for k in range(len(boxes)):
             box = boxes[k]
@@ -150,6 +169,8 @@ def _cropFace(image, boxes, labels, img_dim):
             if flag and not boxTooSmall(newBox, r, minLen):
                 tmpBoxes.append(newBox*r)
                 tmpLabels.append(labels[k])
+            elif flag:
+                delBoxes.append(newBox*r)
             else:
                 continue
 
@@ -158,7 +179,8 @@ def _cropFace(image, boxes, labels, img_dim):
 
         image_t = image[roi[1]:roi[3], roi[0]:roi[2]]
         image_t = cv2.resize(image_t, (img_dim, img_dim))
-
+        if delBoxes:
+            fillDelArea(image_t, delBoxes)
         pad_image_flag = False
 
         return image_t, np.array(tmpBoxes), np.array(tmpLabels), pad_image_flag
@@ -313,27 +335,31 @@ class preproc(object):
         image_t, boxes_t = _mirror(image_t, boxes_t)
         height, width, _ = image_t.shape
 
-        if self.draw:
-            if image_t.shape[0] != self.img_dim:
-                img = cv2.resize(image_t, (self.img_dim, self.img_dim))
-            else:
-                img = image_t.copy()
-
         image_t = _resize_subtract_mean(image_t, self.img_dim, self.rgb_means, self.rgb_norm)
         boxes_t[:, 0::2] /= width
         boxes_t[:, 1::2] /= height
+
         delInds = np.where(np.logical_or((boxes_t[:, 2] - boxes_t[:, 0])*self.img_dim < minLen, (boxes_t[:, 3] - boxes_t[:, 1])*self.img_dim < minLen))
+        tmpDI = np.squeeze(delInds)
+        if tmpDI.size > 0:
+            delBoxes = boxes_t[tmpDI]
         boxes_t = np.delete(boxes_t, np.squeeze(delInds), axis=0)
         labels_t = np.delete(labels_t, np.squeeze(delInds), axis=0)
+
         if boxes_t.size < 1:
             return None, None
+
+        if tmpDI.size > 0:
+            delBoxes *= self.img_dim
+            fillDelArea(image_t, delBoxes if tmpDI.size > 1 else [delBoxes])
 
         if self.draw:
             storePath = './tmpImgs'
             if not os.path.exists(storePath):
                 os.mkdir(storePath)
             num = len(os.listdir(storePath))
-            if num < 12600:
+            if num < 12600: # 数量控制
+                img = image_t*255.
                 drawBoxes(img.astype(np.int32), boxes_t*self.img_dim, os.path.join(storePath, str(uuid.uuid4()) + '.jpg'))
 
         labels_t = np.expand_dims(labels_t, 1)

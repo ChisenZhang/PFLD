@@ -112,10 +112,10 @@ class MobileNetV2(object):
             output2 = self.BlazeBlock(output, 64, 1, 'BlazeBlock11', 2, True, 24)
             # out1 = self.inceptionBlock(output1)
             # out1, attention1 = self.attentionBlock(out1, scope='attentionBlock1')
-            cls1, reg1 = self.clsAndReg(output1, self.num_classes, 2, scope='clsAndReg1')
+            cls1, reg1 = self.clsAndReg(output1, self.num_classes, 8, scope='clsAndReg1')
             # out2 = self.inceptionBlock(output2)
             # out2, attention2 = self.attentionBlock(out2, scope='attentionBlock2')
-            cls2, reg2 = self.clsAndReg(output2, self.num_classes, 6, scope='clsAndReg2')
+            cls2, reg2 = self.clsAndReg(output2, self.num_classes, 24, scope='clsAndReg2')
             self.cls = tf.concat((tf.reshape(cls1, [self.batch_size, -1, self.num_classes]),
                                   tf.reshape(cls2, [self.batch_size, -1, self.num_classes])), axis=-2, name='cls')
             # self.cls = tf.reshape(self.cls, [self.batch_size, self.anchorsLen, self.num_classes], name='cls')

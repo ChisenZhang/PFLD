@@ -194,9 +194,14 @@ class Anchors(object):
 
 
     def shift(self, shape, stride, anchors):
-        shift_x = (np.arange(0, shape[1]) + 0.5) * stride
-        shift_y = (np.arange(0, shape[0]) + 0.5) * stride
-
+        shift_x = []
+        for x in np.arange(0, shape[1]):
+            shift_x.extend((x + np.arange(0.25, 1., 0.5)) * stride)
+        shift_y = []
+        for x in np.arange(0, shape[0]):
+            shift_y.extend((x + np.arange(0.25, 1., 0.5))*stride)
+        shift_x = np.array(shift_x)
+        shift_y = np.array(shift_y)
         shift_x, shift_y = np.meshgrid(shift_x, shift_y)
 
         shifts = np.vstack((

@@ -113,7 +113,7 @@ def main(argv):
             # exit(1)
 
             f = open('paramR.txt', 'w', encoding='utf-8')
-            for i in range(896):
+            for i in range(boxes_vec.shape[0]):
                 l = pred_locs[0][i][0]
                 t = pred_locs[0][i][1]
                 r = pred_locs[0][i][2]
