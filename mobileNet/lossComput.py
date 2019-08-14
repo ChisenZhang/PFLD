@@ -205,6 +205,7 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
     # pos_inds = np.squeeze(pos_inds)
     targets[max_obj_iou_ids >= 0] = 1
     print('match num:', gBoxes.shape, sum(targets == 1), sum(targets == 0))
+    print('pos_AnchorInds:', np.squeeze(np.where(max_obj_iou_ids >= 0)))
     if pos_inds.size > 0:
         assertBoxes = gBoxes[pos_inds]
         assertAnchors = anchors[max_obj_iou_ids >= 0, :]
@@ -360,7 +361,6 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
     with tf.name_scope(scope):
         loc_preds = tf.reshape(pBoxes, (batch_size, -1, 4))
         conf_preds = tf.reshape(plogits, (batch_size, -1, 2))
-        conf_preds = tf.stop_gradient(conf_preds)
         loc_true = tf.reshape(locs_true, (batch_size, -1, 4))
         conf_true = tf.cast(tf.reshape(confs_true, (batch_size, -1)), tf.int32)
         conf_true_oh = tf.one_hot(conf_true, 2)
