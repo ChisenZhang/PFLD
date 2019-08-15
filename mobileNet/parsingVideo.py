@@ -23,8 +23,15 @@ def parsingVedio(vedioPath, imgStorePath):
     nameHead = str(uuid.uuid4()).replace('-', '')
     while success:
         success, frame = cap.read()
+
         if not success:
             break
+
+        # 全黑
+        if frame.mean() < 50:
+            frame_count += 1
+            continue
+
         print('save frame:', frame_count)
         params = []
         # params.append(cv2.CV_IMWRITE_PXM_BINARY)
@@ -35,7 +42,7 @@ def parsingVedio(vedioPath, imgStorePath):
 
 
 if __name__ == '__main__':
-    vedioPath = r'C:\Users\17ZY-HPYKFD2\Downloads\dFServer\u_3100096423_997_2019-07-13_5d2898245c85fc9be3fbffed.mp4'
+    vedioPath = r'C:\Users\17ZY-HPYKFD2\Downloads\dFServer\u_230524394_45_2019-07-14_5d2ac3c56816f8571c1198c0.mp4'
     imStorePath = './tmpImg'
     if not os.path.exists(imStorePath):
         os.mkdir(imStorePath)

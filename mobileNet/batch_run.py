@@ -64,7 +64,17 @@ def freeze_graph_test(pb_path, im):
 def main():
     pbModel_path = './models/pb/blazeFace_model_test.pb'
     # pbModel_path = r'C:\Users\17ZY-HPYKFD2\Downloads\dFServer\blazeFace_model_test.pb'
-    data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
+    # data_test_dir = '/data1/image_data/data/online_pushed_data/parse_result/illegalPicCls/NCNN/ncnn/FDDB'
+    data_test_dir = '/data1/image_data/data/online_pushed_data/parse_result/illegalPicCls/NCNN/ncnn/WIDER_val'
+
+    if not os.path.exists(data_test_dir):
+        print('not found dataDir:', data_test_dir)
+        exit(-1)
+
+    if 'FDDB' in data_test_dir:
+        tail = 'FDDB'
+    else:
+        tail = 'WIDER_val'
     storePath = './tmpDetImgs'
     if not os.path.exists(storePath):
         os.makedirs(storePath)
@@ -97,7 +107,7 @@ def main():
 
             with open(os.path.join(data_test_dir, 'img_list.txt'), 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-                f = open('resultDet.txt', 'w', encoding='utf-8')
+                f = open('result_mobileNet'+tail+'.txt', 'w', encoding='utf-8')
                 for line in lines:
                     line = line.replace('\n', '')
                     print('process line:', line)

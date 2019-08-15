@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 
 def parsingR(fileName):
     tmpDict = {}
+    # tmp = []
     with open(fileName, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
@@ -19,6 +20,7 @@ def parsingR(fileName):
             items = line.split('\t')
             imgName = items[0]
             imgName = imgName.split('/')[2:]
+            # tmp.append([imgName[0], imgName[1]])
             imgName = '_'.join(imgName)
             tmpT = float(items[1]) # 0
             tmpBox = []
@@ -81,8 +83,9 @@ def compute_rec_pre(predicted,
     tp = np.zeros(nd)
     fp = np.zeros(nd)
     d = 0
-
+    # f = open('FDDB_annotition.txt', 'w', encoding='utf-8')
     for image_name in image_names:
+        # tmpS = image_name+'\t'
         objs, OSize = parse_rec(gt_path + image_name + '.xml')
         gt = [obj for obj in objs]
         bbox = np.array([x['bbox'] for x in gt])
@@ -93,19 +96,41 @@ def compute_rec_pre(predicted,
 
         pb = np.array(predicted[image_name][1]).astype(float)
         GT_box = gt['bbox'].astype(float)
+
+        # resize后坐标转换
+        # for i in range(len(GT_box)):
+        #     GBox = GT_box[i]
+        #     if dstSize:
+        #         r = dstSize/max(OSize[0], OSize[1])
+        #         GBox = (np.array(GBox) * r).astype(np.int32)
+        #     # if resized is not None:
+        #     #     bb = [int(bb[0] / float(resized[0]) * OSize[0]), int(bb[1] / float(resized[1]) * OSize[1]),
+        #     #           int(bb[2] / float(resized[0]) * OSize[0]), int(bb[3] / float(resized[1]) * OSize[1])]
+        #     # if skipMinLenThresh and (GBox[3] - GBox[1] < skipMinLenThresh*0.9 or GBox[2] - GBox[0] < skipMinLenThresh*0.9):
+        #     #     continue
+        #     tmpS += str(GBox[0]) + ',' + str(GBox[1]) + ',' + str(GBox[2]) + ',' + str(GBox[3]) + '\t'
+        # tmpS = tmpS[:-1]+'\n'
+        # f.write(tmpS)
+        # continue
+
+        small = 0
         for j in range(len(pb)):
             # intersection
             ovmax = -np.inf
+            bb = pb[j]
             for i in range(len(GT_box)):
-                bb = pb[j]
                 GBox = GT_box[i]
-                r = dstSize/max(OSize[0], OSize[1])
+                if dstSize:
+                    r = dstSize/max(OSize[0], OSize[1])
+                    GBox = (np.array(GBox) * r).astype(np.int32)
                 # if resized is not None:
                 #     bb = [int(bb[0] / float(resized[0]) * OSize[0]), int(bb[1] / float(resized[1]) * OSize[1]),
                 #           int(bb[2] / float(resized[0]) * OSize[0]), int(bb[3] / float(resized[1]) * OSize[1])]
-                GBox = (np.array(GBox)*r).astype(np.int32)
-                if GBox[3] - GBox[1] < skipMinLenThresh or GBox[2] - GBox[0] < skipMinLenThresh:
+                if skipMinLenThresh and (GBox[3] - GBox[1] < skipMinLenThresh or GBox[2] - GBox[0] < skipMinLenThresh):
+                    if j == 0:
+                        small += 1
                     continue
+
                 ixmin = np.maximum(GBox[0], bb[0])
                 iymin = np.maximum(GBox[1], bb[1])
                 ixmax = np.minimum(GBox[2], bb[2])
@@ -133,7 +158,9 @@ def compute_rec_pre(predicted,
             else:
                 fp[d] = 1.
             d += 1
-
+        if small > 0:
+            npos -= small
+    # f.close()
     gt_num = npos
     predicted_num = tp.shape[0]
     true_predicted_num = np.sum(tp)
@@ -144,8 +171,27 @@ def compute_rec_pre(predicted,
 
 
 if __name__ == '__main__':
+    # import os, shutil
+    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_wider.txt'
+    # preR, tmp = parsingR(resultPath)
+    # xmlPath = 'D:/PyCode/wider-face-pascal-voc-annotations/WIDER_val_annotations'
+    # for Head, file in tmp:
+    #     if os.path.exists(os.path.join(xmlPath, file+'.xml')):
+    #         newName = Head+'_'+file+'.xml'
+    #         shutil.copyfile(os.path.join(xmlPath, file+'.xml'), os.path.join('C:/Users/17ZY-HPYKFD2/Downloads/dFServer/WIDER_val', newName))
+    #     else:
+    #         print('not found file:', Head, file)
+    # exit(1)
+
     gt_path = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/FDDB/FDDB_xmlanno/'
-    resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/resultDet.txt'
+    gt_path = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/WIDER_val/'
+
+    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetFDDB.txt'
+    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetWIDER_val.txt'
+
+    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_FDDB.txt'
+    resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_wider.txt'
+
     preR = parsingR(resultPath)
 
     imgs = list(preR.keys())
@@ -158,10 +204,12 @@ if __name__ == '__main__':
     ovthresh = 0.5
 
     recall, precision, gt_nums, predicted_nums, true_predicted_nums, \
-    false_predicted_nums = compute_rec_pre(preR, gt_path, image_set, ovthresh) # , resized=[256, 256])
+    false_predicted_nums = compute_rec_pre(preR, gt_path, image_set, ovthresh,
+                                           dstSize=256. if 'mtcnn' not in resultPath else None,
+                                           skipMinLenThresh=32 if 'ntcnn' not in resultPath else None) # , resized=[256, 256])
     print('----------------------------------')
     print('english word detection test:')
     print('gt_num: %d, detection_num: %d, tp: %d, fp: %d'%(int(gt_nums), int(predicted_nums), int(true_predicted_nums),
                                                            int(false_predicted_nums)))
-    print('rec: %f, prec: %f'%(recall, precision))
+    print('rec: %f, prec: %f, errDet:%f'%(recall, precision, false_predicted_nums/(predicted_nums)))
     print('----------------------------------')
