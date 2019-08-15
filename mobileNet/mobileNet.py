@@ -90,6 +90,7 @@ class MobileNetV2(object):
 
     def blazeModel(self, learning_rate, decay_step):
         with tf.variable_scope('BlazeNet'):
+            # output = tf.image.resize_image_with_pad(self.input, 256, 256)
             output = tf.layers.conv2d(inputs=self.input,
                                       filters=16,
                                       kernel_size=5,

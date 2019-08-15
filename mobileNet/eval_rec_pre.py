@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 def parsingR(fileName):
     tmpDict = {}
     # tmp = []
+    tmpTime = []
     with open(fileName, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
@@ -23,6 +24,7 @@ def parsingR(fileName):
             # tmp.append([imgName[0], imgName[1]])
             imgName = '_'.join(imgName)
             tmpT = float(items[1]) # 0
+            tmpTime.append(tmpT)
             tmpBox = []
             for i in range(2, len(items)): # 1
                 if not items[i]:
@@ -30,6 +32,7 @@ def parsingR(fileName):
                 tmpXY = items[i].split(',')
                 tmpBox.append((int(tmpXY[0]), int(tmpXY[1]), int(tmpXY[2]), int(tmpXY[3])))
             tmpDict[imgName] = [tmpT, tmpBox]
+    print('evalT:', np.array(tmpTime).mean())
     return tmpDict
 
 
@@ -126,6 +129,7 @@ def compute_rec_pre(predicted,
                 # if resized is not None:
                 #     bb = [int(bb[0] / float(resized[0]) * OSize[0]), int(bb[1] / float(resized[1]) * OSize[1]),
                 #           int(bb[2] / float(resized[0]) * OSize[0]), int(bb[3] / float(resized[1]) * OSize[1])]
+
                 if skipMinLenThresh and (GBox[3] - GBox[1] < skipMinLenThresh or GBox[2] - GBox[0] < skipMinLenThresh):
                     if j == 0:
                         small += 1
@@ -184,13 +188,13 @@ if __name__ == '__main__':
     # exit(1)
 
     gt_path = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/FDDB/FDDB_xmlanno/'
-    gt_path = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/WIDER_val/'
+    # gt_path = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/WIDER_val/'
 
-    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetFDDB.txt'
+    resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetFDDB.txt'
     # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetWIDER_val.txt'
 
     # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_FDDB.txt'
-    resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_wider.txt'
+    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_wider.txt'
 
     preR = parsingR(resultPath)
 
