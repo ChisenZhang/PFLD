@@ -86,6 +86,7 @@ def compute_rec_pre(predicted,
     tp = np.zeros(nd)
     fp = np.zeros(nd)
     d = 0
+    skipNum = 0
     # f = open('FDDB_annotition.txt', 'w', encoding='utf-8')
     for image_name in image_names:
         # tmpS = image_name+'\t'
@@ -163,8 +164,10 @@ def compute_rec_pre(predicted,
                 fp[d] = 1.
             d += 1
         if small > 0:
+            skipNum += small
             npos -= small
     # f.close()
+    print('skip Num:', skipNum)
     gt_num = npos
     predicted_num = tp.shape[0]
     true_predicted_num = np.sum(tp)
@@ -210,7 +213,7 @@ if __name__ == '__main__':
     recall, precision, gt_nums, predicted_nums, true_predicted_nums, \
     false_predicted_nums = compute_rec_pre(preR, gt_path, image_set, ovthresh,
                                            dstSize=256. if 'mtcnn' not in resultPath else None,
-                                           skipMinLenThresh=32 if 'ntcnn' not in resultPath else None) # , resized=[256, 256])
+                                           skipMinLenThresh=32 if 'mtcnn' not in resultPath else None) # , resized=[256, 256])
     print('----------------------------------')
     print('english word detection test:')
     print('gt_num: %d, detection_num: %d, tp: %d, fp: %d'%(int(gt_nums), int(predicted_nums), int(true_predicted_nums),

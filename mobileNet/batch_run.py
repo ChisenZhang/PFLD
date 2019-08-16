@@ -12,6 +12,10 @@ import numpy as np
 import os
 from lossComput import decode_batch
 import time
+from eval_rec_pre import parse_rec
+
+dstSize = 256
+drawOriBox = True
 
 def freeze_graph_test(pb_path, im):
     '''
@@ -61,11 +65,25 @@ def freeze_graph_test(pb_path, im):
             return boxes, probs
 
 
+def getGTBoxes(gtPath):
+    objs, OSize = parse_rec(gtPath)
+    gt = [obj for obj in objs]
+    bbox = np.array([x['bbox'] for x in gt])
+    difficult = np.array([x['difficult'] for x in gt]).astype(np.bool)
+    detctions = [False] * len(gt)
+    gt = {'bbox': bbox, 'difficult': difficult, 'det': detctions}
+    GT_box = gt['bbox'].astype(float)
+    return GT_box, OSize
+
+
 def main():
     pbModel_path = './models/pb/blazeFace_model_test.pb'
     # pbModel_path = r'C:\Users\17ZY-HPYKFD2\Downloads\dFServer\blazeFace_model_test.pb'
-    # data_test_dir = '/data1/image_data/data/online_pushed_data/parse_result/illegalPicCls/NCNN/ncnn/FDDB'
-    data_test_dir = '/data1/image_data/data/online_pushed_data/parse_result/illegalPicCls/NCNN/ncnn/WIDER_val'
+    data_test_dir = '/data1/image_data/data/online_pushed_data/parse_result/illegalPicCls/NCNN/ncnn/FDDB'
+    # data_test_dir = '/data1/image_data/data/online_pushed_data/parse_result/illegalPicCls/NCNN/ncnn/WIDER_val'
+
+    lablePath = '/data1/image_data/data/online_pushed_data/parse_result/illegalPicCls/NCNN/ncnn/FDDB/FDDB_xmlanno'
+    # lablePath = '/data1/image_data/data/online_pushed_data/parse_result/illegalPicCls/NCNN/ncnn/WIDER_val/xml'
 
     if not os.path.exists(data_test_dir):
         print('not found dataDir:', data_test_dir)
@@ -111,6 +129,7 @@ def main():
                 for line in lines:
                     line = line.replace('\n', '')
                     print('process line:', line)
+                    xmlPath = os.path.join(lablePath, line.replace('/', '_')+'.xml')
                     filePath = os.path.join(os.path.join(data_test_dir, 'images'), line+'.jpg')
                     frame = cv2.imread(filePath)
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -129,10 +148,20 @@ def main():
                     # pred_boxes[:, [1, 3]][pred_boxes[:, [1, 3]] > HEIGHT_DES] = HEIGHT_DES
                     h, w = HEIGHT_DES, WIDTH_DES
                     tmpS = '../FDDB/'+line+'.jpg\t'+str(totalT)+'\t'
+
+                    if drawOriBox:
+                        GT_box, OSize = getGTBoxes(xmlPath)
+                        for i in range(len(GT_box)):
+                            GBox = GT_box[i]
+                            if dstSize:
+                                r = dstSize / max(OSize[0], OSize[1])
+                                GBox = (np.array(GBox) * r).astype(np.int32)
+                            cv2.rectangle(frame, (GBox[0], GBox[1]), (GBox[2], GBox[3]), (0, 0, 0), 3)
+
                     for box in pred_boxes.tolist():
                         tmpS += str(int(box[0] * w))+','+str(int(box[1] * h))+','+str(int(box[2] * w))+','+str(int(box[3] * h))+'\t'
                         cv2.rectangle(frame, (int(box[0] * w), int(box[1] * h)), (int(box[2] * w), int(box[3] * h)),
-                                      (0, 255, 0), 3)
+                                      (0, 255, 0), 2)
                     tmpS = tmpS[:-1] + '\n'
                     f.write(tmpS)
                     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
