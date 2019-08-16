@@ -70,6 +70,75 @@ def predicted_load(image_names, predicted):
     return predicted_results
 
 
+def compareResult(GT_box, pBox, ovthresh=0.5):
+    tp = 0
+    fp = 0
+    fn = 0
+    for i in range(len(GT_box)):
+        GBox = GT_box[i]
+        ovmax = -np.inf
+        matched = []
+        jmax = -1
+        for j in range(len(pBox)):
+            # intersection
+            bb = pBox[j]
+
+            ixmin = np.maximum(GBox[0], bb[0])
+            iymin = np.maximum(GBox[1], bb[1])
+            ixmax = np.minimum(GBox[2], bb[2])
+            iymax = np.minimum(GBox[3], bb[3])
+            iw = np.maximum(ixmax - ixmin + 1., 0.)
+            ih = np.maximum(iymax - iymin + 1., 0.)
+            inters = iw * ih
+
+            # union
+            uni = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) +
+                   (GBox[2] - GBox[0] + 1.) *
+                   (GBox[3] - GBox[1] + 1.) - inters)
+            overlaps = inters / uni
+            if overlaps > ovmax:
+                ovmax = overlaps
+                jmax = i
+
+        if ovmax > ovthresh:
+            if jmax not in matched:
+                tp += 1
+                matched.append(jmax)
+            else:
+                fp += 1
+        else:
+            fn += 1
+
+    if tp+fp < len(pBox):
+        fp += len(pBox) - (tp+fp)
+
+    return tp, fp, fn
+
+
+def computeResultByBatch(GT_BatchBox, pre_BatchBox, ovthresh=0.5, BatchSize=None):
+    GT_BatchBox = np.array(GT_BatchBox)
+    pre_BatchBox = np.array(pre_BatchBox)
+    if BatchSize is None:
+        batchSize = GT_BatchBox.shape[0]
+    else:
+        batchSize = BatchSize
+
+    if pre_BatchBox.shape[0] != batchSize or GT_BatchBox.shape[0] != batchSize:
+        print('batch size not eque:', batchSize, pre_BatchBox.shape, GT_BatchBox.shape)
+        return
+
+    tp = []
+    fp = []
+    fn = []
+    for i in range(batchSize):
+        tmpTP, tmpFP, tmpFN = compareResult(GT_BatchBox[i], pre_BatchBox[i], ovthresh)
+        tp.append(tmpTP)
+        fp.append(tmpFP)
+        fn.append(tmpFN)
+
+    return tp, fp, fn
+
+
 def compute_rec_pre(predicted,
                     gt_path,
                     image_set,
@@ -82,9 +151,10 @@ def compute_rec_pre(predicted,
     npos = 0
     tmpL = predicted_load(image_set, predicted)
     # go down dets and mark TPs and FPs
-    nd = len(tmpL)
+    nd = len(image_names)
     tp = np.zeros(nd)
     fp = np.zeros(nd)
+    fn = np.zeros(nd)
     d = 0
     skipNum = 0
     # f = open('FDDB_annotition.txt', 'w', encoding='utf-8')
@@ -118,24 +188,24 @@ def compute_rec_pre(predicted,
         # continue
 
         small = 0
-        for j in range(len(pb)):
+        for i in range(len(GT_box)):
+            GBox = GT_box[i]
+            if dstSize:
+                r = dstSize / max(OSize[0], OSize[1])
+                GBox = (np.array(GBox) * r).astype(np.int32)
+            # if resized is not None:
+            #     bb = [int(bb[0] / float(resized[0]) * OSize[0]), int(bb[1] / float(resized[1]) * OSize[1]),
+            #           int(bb[2] / float(resized[0]) * OSize[0]), int(bb[3] / float(resized[1]) * OSize[1])]
+
+            if skipMinLenThresh and (GBox[3] - GBox[1] < skipMinLenThresh or GBox[2] - GBox[0] < skipMinLenThresh):
+                small += 1
+                continue
+
             # intersection
             ovmax = -np.inf
-            bb = pb[j]
-            for i in range(len(GT_box)):
-                GBox = GT_box[i]
-                if dstSize:
-                    r = dstSize/max(OSize[0], OSize[1])
-                    GBox = (np.array(GBox) * r).astype(np.int32)
-                # if resized is not None:
-                #     bb = [int(bb[0] / float(resized[0]) * OSize[0]), int(bb[1] / float(resized[1]) * OSize[1]),
-                #           int(bb[2] / float(resized[0]) * OSize[0]), int(bb[3] / float(resized[1]) * OSize[1])]
-
-                if skipMinLenThresh and (GBox[3] - GBox[1] < skipMinLenThresh or GBox[2] - GBox[0] < skipMinLenThresh):
-                    if j == 0:
-                        small += 1
-                    continue
-
+            jmax = -1
+            for j in range(len(pb)):
+                bb = pb[j]
                 ixmin = np.maximum(GBox[0], bb[0])
                 iymin = np.maximum(GBox[1], bb[1])
                 ixmax = np.minimum(GBox[2], bb[2])
@@ -156,13 +226,16 @@ def compute_rec_pre(predicted,
             if ovmax > ovthresh:
                 if not gt['difficult'][jmax]:
                     if not gt['det'][jmax]:
-                        tp[d] = 1.
+                        tp[d] += 1
                         gt['det'][jmax] = 1
                     else:
-                        fp[d] = 1.
+                        fp[d] += 1
             else:
-                fp[d] = 1.
-            d += 1
+                fn[d] += 1
+        if tp[d] + fp[d] < len(pb):
+            fp[d] += len(pb) - (tp[d] + fp[d])
+        d += 1
+
         if small > 0:
             skipNum += small
             npos -= small
@@ -172,9 +245,10 @@ def compute_rec_pre(predicted,
     predicted_num = tp.shape[0]
     true_predicted_num = np.sum(tp)
     false_predicted_num = np.sum(fp)
-    rec = true_predicted_num / gt_num
-    prec = true_predicted_num / predicted_num
-    return rec, prec, gt_num, predicted_num, true_predicted_num, false_predicted_num
+    false_negative_num = np.sum(fn)
+    rec = true_predicted_num / (true_predicted_num + false_negative_num)
+    prec = true_predicted_num / (true_predicted_num + false_predicted_num)
+    return rec, prec, true_predicted_num+false_negative_num, predicted_num, true_predicted_num, false_predicted_num
 
 
 if __name__ == '__main__':
@@ -216,7 +290,7 @@ if __name__ == '__main__':
                                            skipMinLenThresh=32 if 'mtcnn' not in resultPath else None) # , resized=[256, 256])
     print('----------------------------------')
     print('english word detection test:')
-    print('gt_num: %d, detection_num: %d, tp: %d, fp: %d'%(int(gt_nums), int(predicted_nums), int(true_predicted_nums),
-                                                           int(false_predicted_nums)))
-    print('rec: %f, prec: %f, errDet:%f'%(recall, precision, false_predicted_nums/(predicted_nums)))
+    print('gt_num: %d, detection_num: %d, tp: %d, fp: %d' % (int(gt_nums), int(predicted_nums), int(true_predicted_nums),
+                                                                int(false_predicted_nums)))
+    print('rec: %f, prec: %f, errDet:%f' % (recall, precision, false_predicted_nums / predicted_nums))
     print('----------------------------------')

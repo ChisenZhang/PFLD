@@ -18,7 +18,10 @@ class MobileNetV2(object):
     def __init__(self, num_classes=2, batch_size=32, anchorsLen=896, training=True):
         self.input = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
         self.num_classes = num_classes
-        self.training = training
+        if training:
+            self.training = tf.placeholder(tf.bool, name="is_training")
+        else:
+            self.training = False
         self.batch_size = batch_size
         self.anchorsLen = anchorsLen
         self.index = 0
@@ -135,18 +138,26 @@ class MobileNetV2(object):
             # self.drawImage = tf.image.draw_bounding_boxes(self.input, self.boundBoxes)
             # tf.summary.image("input_img", self.input, max_outputs=6)
 
+            # 定义指数下降学习率
+            self.lr = tf.train.exponential_decay(learning_rate=0.01, global_step=self.GStep,
+                                                       decay_steps=10000, decay_rate=0.99, staircase=True)
+
             # 多项式衰减 往复
-            self.lr = tf.train.polynomial_decay(learning_rate=learning_rate, global_step=self.GStep,
-                                           decay_steps=decay_step, end_learning_rate=1e-8,
-                                           power=0.5, cycle=True)
+            # self.lr = tf.train.polynomial_decay(learning_rate=learning_rate, global_step=self.GStep,
+            #                                decay_steps=decay_step, end_learning_rate=1e-8,
+            #                                power=0.5, cycle=True)
+
             tf.summary.scalar('LR', self.lr)
+
             # L1_loss, cls_loss, attLoss = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size, locs_true=self.target_locs,
             #                         confs_true=self.target_confs,
             #                         pAttention=[self.attention1, self.attention2],
             #                         attention_gt=[self.target_attention1, self.target_attention2])
+
             L1_loss, cls_loss, _ = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size,
                                                      locs_true=self.target_locs,
                                                      confs_true=self.target_confs)
+
             self.loss = L1_loss + cls_loss # + attLoss if attLoss is not None else 0.
             self.loss += tf.losses.get_regularization_loss()  # Add regularisation
             tf.summary.scalar('L1_loss', L1_loss)
@@ -404,8 +415,13 @@ class MobileNetV2(object):
         # _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,
         #                                         self.target_attention1: attention1, self.target_attention2: attention2})
         _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr],
-                                      feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs})
+                                      feed_dict={self.input: imgs, self.training: True, self.target_locs: locs, self.target_confs: confs})
         return loss, merged
+
+    def getResults(self, sess, imgs):
+        probs, boxes = sess.run([self.prob, self.reg], feed_dict={self.input: imgs, self.training: False})
+
+        return probs, boxes
 
 
 if __name__ == '__main__':

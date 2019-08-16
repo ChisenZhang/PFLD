@@ -71,11 +71,11 @@ class VOCDetection(object):
             (eg: take in caption string, return tensor of word indices)
     """
 
-    def __init__(self, root, preproc=None, target_transform=None):
+    def __init__(self, root, preproc=None, target_transform=None, annotationSubPath=None):
         self.root = root
         self.preproc = preproc
         self.target_transform = target_transform
-        self._annopath = os.path.join(self.root, 'annotations', '%s')
+        self._annopath = os.path.join(self.root, 'annotations' if annotationSubPath is None else annotationSubPath, '%s')
         self._imgpath = os.path.join(self.root, 'images', '%s')
         self.ids = list()
         with open(os.path.join(self.root, 'img_list.txt'), 'r') as f:

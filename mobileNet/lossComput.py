@@ -204,8 +204,9 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
     pos_inds = max_obj_iou_ids[max_obj_iou_ids >= 0]
     # pos_inds = np.squeeze(pos_inds)
     targets[max_obj_iou_ids >= 0] = 1
-    print('match num:', gBoxes.shape, sum(targets == 1), sum(targets == 0))
-    print('pos_AnchorInds:', np.squeeze(np.where(max_obj_iou_ids >= 0)))
+    # print('match num:', gBoxes.shape, sum(targets == 1), sum(targets == 0))
+    # print('pos_AnchorInds:', np.squeeze(np.where(max_obj_iou_ids >= 0)))
+
     if pos_inds.size > 0:
         assertBoxes = gBoxes[pos_inds]
         assertAnchors = anchors[max_obj_iou_ids >= 0, :]
@@ -372,7 +373,7 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         pos_ids = tf.cast(positive_check, tf.bool)
         n_pos = tf.maximum(tf.reduce_sum(positive_check), 1)
 
-        l1_loss = tf.losses.huber_loss(loc_true, loc_preds, reduction=tf.losses.Reduction.NONE)  # Smoothed L1 loss
+        l1_loss = tf.losses.huber_loss(loc_true, loc_preds, delta=1.35, reduction=tf.losses.Reduction.NONE)  # Smoothed L1 loss
         l1_loss = positive_check * tf.reduce_sum(l1_loss, axis=-1)  # Zero out L1 loss for negative boxes
 
         cls_loss = focal_loss(conf_true_oh, conf_preds)

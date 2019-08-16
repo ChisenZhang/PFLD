@@ -31,6 +31,8 @@ sys.path.append('./dataLoader/WIDE_FACE')
 from WIDE_FACE.wider_voc import VOCDetection, AnnotationTransform
 from WIDE_FACE.data_augment import preproc
 from dataLoader import DataService
+from lossComput import decode_batch
+from eval_rec_pre import computeResultByBatch
 
 data_train_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/WIDER_FACE/'
 data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
@@ -112,6 +114,8 @@ if __name__ == '__main__':
     tf.reset_default_graph()
 
     train_data = VOCDetection(data_train_dir, preproc(IM_S, 0, 1/255.), AnnotationTransform())
+    testData = VOCDetection(data_test_dir, preproc(IM_S, 0, 1/255.), AnnotationTransform(), 'FDDB_xmlanno')
+    print('testData Num:', len(testData))
     print('train_wideFaceNum:', len(train_data))
 
     data_loader = DataService(train_data, BATCH_SIZE, 32, workers=3)
@@ -179,14 +183,28 @@ if __name__ == '__main__':
                         # print(' Mean train mAP: ', np.mean(train_mAP_pred))
                         # train_mAP_pred = []
                         train_loss = []
-                    # if i%TEST_FREQ == 0:
-                    #     for j in range(25):
-                    #         imgs, lbls = svc_test.random_sample(BATCH_SIZE)
-                    #         pred_confs, pred_locs = fb_model.test_iter(imgs)
-                    #         pred_boxes = anchors.decode_batch(boxes_vec, pred_locs, pred_confs)
-                    #         test_mAP_pred.append(anchors.compute_mAP(imgs, lbls, pred_boxes, normalised = USE_NORM))
-                    #     print('Mean test mAP: ', np.mean(test_mAP_pred))
-                    #     test_mAP_pred = []
+
+                    if step != 0 and step % TEST_FREQ == 0:
+                        testData_loader = DataService(train_data, BATCH_SIZE, 8, workers=2)
+                        testData_loader.start()
+                        tp = []
+                        fp = []
+                        fn = []
+                        for j in range(len(testData)//BATCH_SIZE):
+                            print('compute batch:', j)
+                            imgs, lbls = testData_loader.pop()
+                            pred_confs, pred_locs = fd_model.getResults(sess, imgs)
+                            pred_boxes = decode_batch(anchors, pred_locs, pred_confs, min_conf=0.3)
+                            tmpTP, tmpFP, tmpFN = computeResultByBatch(lbls*IM_S, pred_boxes*IM_S, 0.5)
+                            tp.extend(tmpTP)
+                            fp.extend(tmpFP)
+                            fn.extend(tmpFN)
+                        testData_loader.stop()
+
+                        tpv = np.sum(np.array(tp))
+                        fpv = np.sum(np.array(fp))
+                        fnv = np.sum(np.array(fn))
+                        print('testR: rec:%f, pre:%f, errDet:%f.' % (tpv / (tpv + fnv), tpv / (tpv + fpv), fnv / (tpv + fpv)))
                     if step % SAVE_FREQ == 0:
                         print('Saving model...')
                         saver.save(sess, save_f + model_name+str(step), global_step=step)
