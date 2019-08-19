@@ -194,6 +194,7 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
 
     targets = np.ones((anchors.shape[0], 1), dtype=np.int32)*-1
     locs = np.zeros((anchors.shape[0], 4), dtype=np.int32)
+    # ious = np.zeros((anchors.shape[0], 1), dtype=np.float32)
 
     max_obj_iou = np.squeeze(max_obj_iou)
     max_obj_iou_ids = np.squeeze(max_obj_iou_ids)
@@ -201,15 +202,18 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
     targets[max_obj_iou < minThresh] = 0
     # targets[max_obj_iou >= maxThresh] = 1
     max_obj_iou_ids[max_obj_iou < maxThresh] = -1
-    pos_inds = max_obj_iou_ids[max_obj_iou_ids >= 0]
+
+    posTF = max_obj_iou_ids >= 0
+    pos_inds = max_obj_iou_ids[posTF]
     # pos_inds = np.squeeze(pos_inds)
-    targets[max_obj_iou_ids >= 0] = 1
+    targets[posTF] = 1
+    # ious[posTF] = max_obj_iou[posTF]
     # print('match num:', gBoxes.shape, sum(targets == 1), sum(targets == 0))
     # print('pos_AnchorInds:', np.squeeze(np.where(max_obj_iou_ids >= 0)))
 
     if pos_inds.size > 0:
         assertBoxes = gBoxes[pos_inds]
-        assertAnchors = anchors[max_obj_iou_ids >= 0, :]
+        assertAnchors = anchors[posTF, :]
 
         aC = np.array(assertAnchors[:, 2:] + assertAnchors[:, :2]).astype(np.float32)/2
         aWH = np.array(assertAnchors[:, 2:] - assertAnchors[:, :2]).astype(np.float32)
@@ -222,9 +226,9 @@ def anchorFillter(anchors, gBoxes, minThresh=0.3, maxThresh=0.7):
 
         out = np.concatenate((cxy*10., wh*5.), axis=-1)
 
-        locs[max_obj_iou_ids >= 0] = out
+        locs[posTF] = out
 
-    return locs, np.squeeze(targets)
+    return locs, np.squeeze(targets) #, np.squeeze(ious)
 
 
 def decode(anchor_boxes, locs, confs, min_conf=0.05, keep_top=400, nms_thresh=0.3, do_nms=True):
@@ -269,11 +273,13 @@ def decode_batch(anchors, locs, confs, min_conf=0.5):
 def encode_batch(anchors, boxes, minThresh=0.3, maxThresh=0.7):
     out_locs = []
     out_confs = []
+    # out_iou = []
     for i in range(len(boxes)):
         l, c = anchorFillter(anchors, boxes[i], minThresh, maxThresh)
         out_locs.append(l)
         out_confs.append(c)
-    return np.array(out_locs), np.array(out_confs)[:, :, np.newaxis]
+        # out_iou.append(iou)
+    return np.array(out_locs), np.array(out_confs)[:, :, np.newaxis] # , out_iou
 
 
 def smooth_L1_loss(y_true, y_pred):
@@ -363,6 +369,7 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         loc_preds = tf.reshape(pBoxes, (batch_size, -1, 4))
         conf_preds = tf.reshape(plogits, (batch_size, -1, 2))
         loc_true = tf.reshape(locs_true, (batch_size, -1, 4))
+        # iou_true = tf.reshape(ious_true, (batch_size, -1))
         conf_true = tf.cast(tf.reshape(confs_true, (batch_size, -1)), tf.int32)
         conf_true_oh = tf.one_hot(conf_true, 2)
 
@@ -370,11 +377,12 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         # n_cls = tf.maximum(tf.reduce_sum(cls_check), 1)
 
         positive_check = tf.reshape(tf.cast(tf.equal(conf_true, 1), tf.float32), (batch_size, tf.shape(loc_preds)[1]))
+        # iou_true = tf.reshape(iou_true, (batch_size, tf.shape(loc_preds)[1]))
         pos_ids = tf.cast(positive_check, tf.bool)
         n_pos = tf.maximum(tf.reduce_sum(positive_check), 1)
 
         l1_loss = tf.losses.huber_loss(loc_true, loc_preds, delta=1.35, reduction=tf.losses.Reduction.NONE)  # Smoothed L1 loss
-        l1_loss = positive_check * tf.reduce_sum(l1_loss, axis=-1)  # Zero out L1 loss for negative boxes
+        l1_loss = positive_check * tf.reduce_sum(l1_loss, axis=-1) # Zero out L1 loss for negative boxes
 
         # cls_loss = focal_loss(conf_true_oh, conf_preds)
         cls_loss = tf.nn.softmax_cross_entropy_with_logits_v2(logits=conf_preds, labels=conf_true_oh)

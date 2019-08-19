@@ -27,6 +27,7 @@ class MobileNetV2(object):
         self.index = 0
         self.target_locs = tf.placeholder(tf.float32, shape=(None, None, 4), name='target_locs')
         self.target_confs = tf.placeholder(tf.float32, shape=(None, None, 1), name='target_confs')
+        # self.target_ious = tf.placeholder(tf.float32, shape=(None, None, 1), name='target_ious')
         self.target_attention1 = tf.placeholder(tf.float32, shape=(None, 16, 16), name='target_attention1')
         self.target_attention2 = tf.placeholder(tf.float32, shape=(None, 8, 8), name='target_attention2')
         self.GStep = tf.Variable(0, trainable=False)
@@ -157,6 +158,7 @@ class MobileNetV2(object):
             L1_loss, cls_loss, _ = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size,
                                                      locs_true=self.target_locs,
                                                      confs_true=self.target_confs)
+                                                     # ious_true=self.target_ious)
 
             self.loss = L1_loss + cls_loss # + attLoss if attLoss is not None else 0.
             self.loss += tf.losses.get_regularization_loss()  # Add regularisation
@@ -415,7 +417,7 @@ class MobileNetV2(object):
         # _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,
         #                                         self.target_attention1: attention1, self.target_attention2: attention2})
         _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr],
-                                      feed_dict={self.input: imgs, self.training: True, self.target_locs: locs, self.target_confs: confs})
+                                      feed_dict={self.input: imgs, self.training: True, self.target_locs: locs, self.target_confs: confs}) # , self.target_ious: ious})
         return loss, merged
 
     def getResults(self, sess, imgs):
