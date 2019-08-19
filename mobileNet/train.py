@@ -39,7 +39,7 @@ data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
 
 # Training parameters
 optimizer = 'adam'        # A string from: 'agd', 'adam', 'momentum'
-learning_rate = 5e-3
+learning_rate = 1e-2
 momentum = None          # Necessary if optimizer is 'momentum'
 summarize = True         # True if summarize in tensorboard
 step = 0
@@ -98,9 +98,9 @@ if __name__ == '__main__':
         os.mkdir(save_f)
     model_name = 'faceDet_fmBaseAnchor_'+timeCur+'_'
     PRINT_FREQ = 10
-    TEST_FREQ = 1000
+    TEST_FREQ = 4000
     SAVE_FREQ = 5000
-    BATCH_SIZE = 32
+    BATCH_SIZE = 64
     MAX_EPOCH = 300
     IM_S = 256
     IM_CHANNELS = 3
@@ -204,7 +204,7 @@ if __name__ == '__main__':
                         tpv = np.sum(np.array(tp))
                         fpv = np.sum(np.array(fp))
                         fnv = np.sum(np.array(fn))
-                        print('testR: rec:%f, pre:%f, errDet:%f.' % (tpv / (tpv + fnv), tpv / (tpv + fpv), fnv / (tpv + fpv)))
+                        print('testR: rec:%f, pre:%f, errDet:%f.' % (tpv / (tpv + fnv), tpv / (tpv + fpv), fpv / (tpv + fpv)))
                     if step % SAVE_FREQ == 0:
                         print('Saving model...')
                         saver.save(sess, save_f + model_name+str(step), global_step=step)

@@ -74,10 +74,11 @@ def compareResult(GT_box, pBox, ovthresh=0.5):
     tp = 0
     fp = 0
     fn = 0
+    matched = []
+
     for i in range(len(GT_box)):
         GBox = GT_box[i]
         ovmax = -np.inf
-        matched = []
         jmax = -1
         for j in range(len(pBox)):
             # intersection
@@ -248,7 +249,7 @@ def compute_rec_pre(predicted,
     false_negative_num = np.sum(fn)
     rec = true_predicted_num / (true_predicted_num + false_negative_num)
     prec = true_predicted_num / (true_predicted_num + false_predicted_num)
-    return rec, prec, true_predicted_num+false_negative_num, predicted_num, true_predicted_num, false_predicted_num
+    return rec, prec, true_predicted_num+false_negative_num, len(tmpL), true_predicted_num, false_predicted_num
 
 
 if __name__ == '__main__':

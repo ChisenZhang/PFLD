@@ -376,7 +376,8 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         l1_loss = tf.losses.huber_loss(loc_true, loc_preds, delta=1.35, reduction=tf.losses.Reduction.NONE)  # Smoothed L1 loss
         l1_loss = positive_check * tf.reduce_sum(l1_loss, axis=-1)  # Zero out L1 loss for negative boxes
 
-        cls_loss = focal_loss(conf_true_oh, conf_preds)
+        # cls_loss = focal_loss(conf_true_oh, conf_preds)
+        cls_loss = tf.nn.softmax_cross_entropy_with_logits_v2(logits=conf_preds, labels=conf_true_oh)
         cls_loss = cls_check*cls_loss
         # cls_loss = hard_negative_mining(cls_loss, pos_ids, batch_size)
 
