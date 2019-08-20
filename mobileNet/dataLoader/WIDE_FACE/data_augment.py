@@ -297,10 +297,12 @@ def _pad_to_square(image, rgb_mean, pad_image_flag):
 def _resize_subtract_mean(image, insize, rgb_mean, rgb_norm):
     interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
     interp_method = interp_methods[random.randrange(5)]
-    image = cv2.resize(image, (insize, insize), interpolation=interp_method)
+    h, w, _ = image.shape
+    r = insize/w
+    image = cv2.resize(image, (0, 0), fx=r, fy=r, interpolation=interp_method)
     image = image.astype(np.float32)
-    image -= rgb_mean
-    image *= rgb_norm
+    # image -= rgb_mean
+    # image *= rgb_norm
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
@@ -359,7 +361,7 @@ class preproc(object):
                 os.mkdir(storePath)
             num = len(os.listdir(storePath))
             if num < 12600: # 数量控制
-                img = image_t*255.
+                img = image_t
                 drawBoxes(img.astype(np.int32), boxes_t*self.img_dim, os.path.join(storePath, str(uuid.uuid4()) + '.jpg'))
 
         labels_t = np.expand_dims(labels_t, 1)

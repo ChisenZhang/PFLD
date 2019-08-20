@@ -16,7 +16,7 @@ training_LandMark = False
 
 class MobileNetV2(object):
     def __init__(self, num_classes=2, batch_size=32, anchorsLen=896, training=True):
-        self.input = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
+        self.input = tf.placeholder(dtype=tf.float32, shape=[None, None, 256, 3], name='input')
         self.num_classes = num_classes
         if training:
             self.training = tf.placeholder(tf.bool, name="is_training")

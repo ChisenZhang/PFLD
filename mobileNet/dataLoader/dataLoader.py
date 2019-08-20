@@ -84,16 +84,26 @@ class DataService(object):
     def getBatch(self, globalExpIndex):
         imgBatch = []
         labBatch = []
+        maxW, maxH = 0, 0
         tmpL = 0
         for tmp in range(globalExpIndex, globalExpIndex + self.batch_size):
             while True:  # 处理图中框过小，过滤
                 if tmp + tmpL >= len(self.source_p):
                     return None, None
                 tmpImg, tmpLal = self.source_p[tmp + tmpL]
+                maxW = max(maxW, tmpImg.shape[1])
+                maxH = max(maxH, tmpImg.shape[0])
                 if tmpImg is None:
                     tmpL += 1
                 else:
                     break
             imgBatch.append(tmpImg)
             labBatch.append(np.array(tmpLal)[:, 0:4].tolist())
-        return imgBatch, labBatch
+
+        tmpBatch = []
+        for tmpImg in imgBatch:
+            img = np.pad(tmpImg, ((0, maxH - tmpImg.shape[0]), (0, maxW - tmpImg.shape[1]), (0, 0)),
+                           mode='constant')
+            tmpBatch.append(img)
+
+        return tmpBatch, labBatch
