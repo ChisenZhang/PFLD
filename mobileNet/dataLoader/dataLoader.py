@@ -91,12 +91,13 @@ class DataService(object):
                 if tmp + tmpL >= len(self.source_p):
                     return None, None
                 tmpImg, tmpLal = self.source_p[tmp + tmpL]
-                maxW = max(maxW, tmpImg.shape[1])
-                maxH = max(maxH, tmpImg.shape[0])
                 if tmpImg is None:
                     tmpL += 1
                 else:
                     break
+                maxW = max(maxW, tmpImg.shape[1])
+                maxH = max(maxH, tmpImg.shape[0])
+
             imgBatch.append(tmpImg)
             labBatch.append(np.array(tmpLal)[:, 0:4].tolist())
 
