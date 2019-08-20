@@ -299,7 +299,7 @@ if __name__ == '__main__':
         img_name_list.append(img_name)
 
     image_set = img_name_list
-    ovthresh = 0.4
+    ovthresh = 0.5
 
     recall, precision, gt_nums, predicted_nums, true_predicted_nums, \
     false_predicted_nums = compute_rec_pre(preR, gt_path, image_set, ovthresh,
