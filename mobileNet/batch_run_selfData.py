@@ -83,7 +83,7 @@ def main(dataPath=None):
             output_tensor_probs = sess.graph.get_tensor_by_name("BlazeNet/probs:0")
             output_tensor_locs = sess.graph.get_tensor_by_name("BlazeNet/reg:0")
 
-            f = open('result_mobileNet' + tail + '.txt', 'w', encoding='utf-8')
+            f = open('result_mobileNetSelf_' + data_test_dir.split('/')[-1 if data_test_dir[-1] != '/' else -2] + '.txt', 'w', encoding='utf-8')
 
             for line in os.listdir(data_test_dir):
                 if line.endswith('.jpg'):

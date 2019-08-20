@@ -39,7 +39,7 @@ data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
 
 # Training parameters
 optimizer = 'adam'        # A string from: 'agd', 'adam', 'momentum'
-learning_rate = 1e-2
+learning_rate = 5e-3
 momentum = None          # Necessary if optimizer is 'momentum'
 summarize = True         # True if summarize in tensorboard
 step = 0
@@ -61,6 +61,7 @@ def count_number_trainable_params(scope=""):
         tot_nb_params = tot_nb_params + current_nb_params
     return tot_nb_params
 
+
 def get_nb_params_shape(shape):
     '''
     Computes the total number of params for a given shape.
@@ -71,6 +72,7 @@ def get_nb_params_shape(shape):
     for dim in shape:
         nb_params = nb_params*int(dim)
     return nb_params
+
 
 def dataProcess(img_id):
     # img_id = self.ids[index]
@@ -88,6 +90,7 @@ def dataProcess(img_id):
     img, target = preproc(img, target)
 
     return img, target
+
 
 if __name__ == '__main__':
     np.set_printoptions(suppress=True)
