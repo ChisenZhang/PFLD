@@ -10,7 +10,6 @@ import numpy as np
 from mobileNet import MobileNetV2
 from anchors import Anchors
 import sys
-
 import os
 import time
 
@@ -21,10 +20,6 @@ else:
 
 import cv2
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "7"  # gpu编号
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True # 设置最小gpu使用量
-
 sys.path.append('./dataLoader')
 sys.path.append('./dataLoader/WIDE_FACE')
 
@@ -33,6 +28,12 @@ from WIDE_FACE.data_augment import preproc
 from dataLoader import DataService
 from lossComput import decode_batch
 from eval_rec_pre import computeResultByBatch
+
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "7"  # gpu编号
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True # 设置最小gpu使用量
+
 
 data_train_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/WIDER_FACE/'
 data_test_dir = '/home/wei.ma/face_detection/FaceBoxes.PyTorch/data/FDDB'
@@ -127,7 +128,7 @@ if __name__ == '__main__':
 
     print('Building model...')
     # x = tf.placeholder(dtype=tf.float32, shape=[None, 256, 256, 3], name='input')
-    fd_model = MobileNetV2(num_classes=2, batch_size=BATCH_SIZE, anchorsLen=anchors.shape[0])
+    fd_model = MobileNetV2(num_classes=2, batch_size=BATCH_SIZE)
     fd_model.blazeModel(learning_rate, decay_step=int(len(train_data) / BATCH_SIZE))
 
     # Summarize in tensorboard
@@ -167,7 +168,7 @@ if __name__ == '__main__':
 
             flag = True
             while True:
-                imgs, lbls = data_loader.pop()
+                imgs, lbls, batchShape = data_loader.pop()
 
                 if imgs is None:
                     break

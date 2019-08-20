@@ -59,7 +59,7 @@ class DataService(object):
                     tmpIndex = self.GIndex.value
                     # print('worker:', i, ', Index:', tmpIndex)
                     self.GIndex.value += self.batch_size
-                imgs, boxes = self.getBatch(tmpIndex)
+                imgs, boxes, maxWH = self.getBatch(tmpIndex)
                 feedFlag = False
                 with self.lock:
                     if imgs is None:
@@ -68,7 +68,7 @@ class DataService(object):
                         continue
                     if not self.q.full():
                         feedFlag = True
-                        self.q.put(tuple([imgs, boxes]))
+                        self.q.put(tuple([imgs, boxes, maxWH]))
 
                 # 队满延时等待
                 while not feedFlag:
@@ -106,4 +106,4 @@ class DataService(object):
                            mode='constant')
             tmpBatch.append(img)
 
-        return tmpBatch, labBatch
+        return tmpBatch, labBatch, (maxW, maxH)

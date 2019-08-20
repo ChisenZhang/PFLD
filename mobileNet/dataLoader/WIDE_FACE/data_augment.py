@@ -131,19 +131,20 @@ def fillDelArea(image, dBoxes):
 
 def _cropFace(image, boxes, labels, img_dim):
     h, w, _ = image.shape
-    pad_image_flag = True
-    for i in range(50):
+    pad_image_flag = False
+    for i in range(150):
         # 人脸标签范围扩展
         if random.uniform(0, 1) <= 0.2:
-            scale = 1
+            scalew = 1
+            scaleh = 1
         else:
-            scale = random.uniform(0.2, 1.)
-
-        tw = int(scale * min(h, w))
-        th = tw
+            scalew = random.uniform(0.2, 1.)
+            scaleh = random.uniform(0.2, 1.)
+        tw = int(scalew * w)
+        th = int(scaleh * h)
 
         # 过小
-        if tw < img_dim//4:
+        if (tw < img_dim//4 or th < img_dim//4) and th/tw < 3: # 不会过小，且长宽比合适
             continue
         r = img_dim / float(tw)
 
@@ -178,7 +179,8 @@ def _cropFace(image, boxes, labels, img_dim):
             continue
 
         image_t = image[roi[1]:roi[3], roi[0]:roi[2]]
-        image_t = cv2.resize(image_t, (img_dim, img_dim))
+        image_t = cv2.resize(image_t, (0, 0), fx=r, fy=r)
+
         if delBoxes:
             fillDelArea(image_t, delBoxes)
         pad_image_flag = False
