@@ -76,7 +76,7 @@ class DataService(object):
                     with self.lock:
                         if not self.q.full():
                             feedFlag = True
-                            self.q.put(tuple([imgs, boxes]))
+                            self.q.put(tuple([imgs, boxes, maxWH]))
 
             except AssertionError:
                 print('Assertion Error (edge-case) - skipping...')

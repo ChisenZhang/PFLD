@@ -99,10 +99,10 @@ class MobileNetV2(object):
     def blazeModel(self, learning_rate, decay_step):
         with tf.variable_scope('BlazeNet'):
             # output = tf.image.resize_image_with_pad(self.input, 256, 256)
-            output = tf.image.resize_images(self.input, (256, 256), preserve_aspect_ratio=True,
-                                                     method=0)
-            output = tf.image.pad_to_bounding_box(output, 0, 0, 256, 256)
-            output = output/255.
+            # output = tf.image.resize_images(self.input, (256, 256), preserve_aspect_ratio=True,
+            #                                          method=0)
+            # output = tf.image.pad_to_bounding_box(output, 0, 0, 256, 256)
+            output = self.input/255.
             output = tf.layers.conv2d(inputs=output,
                                       filters=16,
                                       kernel_size=5,
@@ -419,10 +419,10 @@ class MobileNetV2(object):
             return cls, reg
 
     # 返回loss
-    def getTrainLoss(self, sess, imgs, anchors, gBoxes):
-        # anchors = anchorsC.get_anchors(fmSizes=[(batchShape[1]//16, batchShape[0]//16),
-        #                                         (batchShape[1]//32, batchShape[0]//32)], fmBased=True)
-
+    def getTrainLoss(self, sess, imgs, batchShape, gBoxes):
+        anchors = anchorsC.get_anchors(fmSizes=[(batchShape[1]//16, batchShape[0]//16),
+                                                (batchShape[1]//32, batchShape[0]//32)], fmBased=True)
+        print('anchors shape:', anchors.shape)
         locs, confs = encode_batch(anchors, gBoxes, 0.3, 0.5)
         # attention1, attention2 = generateAttentionMap(self.batch_size, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
         # _, loss, merged, _ = sess.run([self.train, self.loss, self.merged, self.lr], feed_dict={self.input: imgs, self.target_locs: locs, self.target_confs: confs,

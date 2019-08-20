@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     # NOTE: SSD variances are set in the anchors.py file
     anchorsC = Anchors()
-    anchors = anchorsC.get_anchors(fmSizes=[(16, 16), (8, 8)], fmBased=True)
+    # anchors = anchorsC.get_anchors(fmSizes=[(16, 16), (8, 8)], fmBased=True)
 
     tf.reset_default_graph()
 
@@ -176,7 +176,7 @@ if __name__ == '__main__':
                 print('Iteration ', step, ' ', end='\r')
 
                 try:
-                    loss, summary = fd_model.getTrainLoss(sess, imgs, anchors, lbls)
+                    loss, summary = fd_model.getTrainLoss(sess, imgs, batchShape, lbls)
                     train_loss.append(loss)
                     # train_mAP_pred.append(mAP)
                     writer.add_summary(summary, step)
@@ -196,8 +196,10 @@ if __name__ == '__main__':
                         fn = []
                         for j in range(len(testData)//BATCH_SIZE):
                             print('compute batch:', j)
-                            imgs, lbls = testData_loader.pop()
+                            imgs, lbls, batchShape = testData_loader.pop()
                             pred_confs, pred_locs = fd_model.getResults(sess, imgs)
+                            anchors = anchorsC.get_anchors(fmSizes=[(batchShape[1]//16, batchShape[0]//16),
+                                                              (batchShape[1]//32, batchShape[0]//32)], fmBased=True)
                             pred_boxes = decode_batch(anchors, pred_locs, pred_confs, min_conf=0.3)
                             tmpTP, tmpFP, tmpFN = computeResultByBatch(lbls*IM_S, pred_boxes*IM_S, 0.5)
                             tp.extend(tmpTP)
