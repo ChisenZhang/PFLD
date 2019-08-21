@@ -335,10 +335,11 @@ class MobileNetV2(object):
                 s = x
 
             if n_out - n_in > 0:
-                tmpShape = s.shape.as_list()
-                addShape = (self.batch_size, tmpShape[1], tmpShape[2], n_out - n_in)
-                addC = tf.zeros(shape=addShape, name='ZeroC', dtype=tf.float32)
-                s = tf.concat([s, addC], axis=-1, name='padZero')
+                # tmpShape = s.shape.as_list()
+                s = tf.pad(s, [[0, 0], [0, 0], [0, 0], [0, n_out - n_in]], name='padZero')
+                # addShape = (self.batch_size, tmpShape[1], tmpShape[2], n_out - n_in)
+                # addC = tf.zeros(shape=addShape, name='ZeroC', dtype=tf.float32)
+                # s = tf.concat([s, addC], axis=-1, name='padZero')
 
             output = tf.layers.batch_normalization(inputs=f+s, training=self.training)
             output = tf.nn.relu6(output)
