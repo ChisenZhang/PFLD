@@ -89,7 +89,7 @@ class DataService(object):
         for tmp in range(globalExpIndex, globalExpIndex + self.batch_size):
             while True:  # 处理图中框过小，过滤
                 if tmp + tmpL >= len(self.source_p):
-                    return None, None
+                    return None, None, None
                 tmpImg, tmpLal = self.source_p[tmp + tmpL]
                 if tmpImg is None:
                     tmpL += 1
