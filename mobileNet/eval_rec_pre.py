@@ -263,9 +263,12 @@ def compute_rec_pre(predicted,
     false_negative_num = np.sum(fn)
     rec = true_predicted_num / (true_predicted_num + false_negative_num)
     prec = true_predicted_num / (true_predicted_num + false_predicted_num)
-    print('small tp:%d, fp:%d, fn:%d' % (np.sum(stp), np.sum(sfp), np.sum(sfn)))
-    print('small rec:%f, pre:%f' % (np.sum(stp)/(np.sum(stp) + np.sum(sfn)), np.sum(stp)/(np.sum(stp) + np.sum(sfp))))
-    return rec, prec, true_predicted_num+false_negative_num, len(tmpL), true_predicted_num, false_predicted_num
+    try:
+        print('small tp:%d, fp:%d, fn:%d' % (np.sum(stp), np.sum(sfp), np.sum(sfn)))
+        print('small rec:%f, pre:%f' % (np.sum(stp)/(np.sum(stp) + np.sum(sfn)), np.sum(stp)/(np.sum(stp) + np.sum(sfp))))
+    except Exception as E:
+        print('small error:', E)
+    return rec, prec, true_predicted_num+false_negative_num, len(tmpL), true_predicted_num, false_predicted_num, false_negative_num
 
 
 if __name__ == '__main__':
@@ -302,12 +305,12 @@ if __name__ == '__main__':
     ovthresh = 0.5
 
     recall, precision, gt_nums, predicted_nums, true_predicted_nums, \
-    false_predicted_nums = compute_rec_pre(preR, gt_path, image_set, ovthresh,
+    false_predicted_nums, fn = compute_rec_pre(preR, gt_path, image_set, ovthresh,
                                            dstSize=256. if 'mtcnn' not in resultPath else None,
                                            skipMinLenThresh=32 if 'mtcnn' not in resultPath else None) # , resized=[256, 256])
     print('----------------------------------')
     # print('english word detection test:')
-    print('gt_num: %d, detection_num: %d, tp: %d, fp: %d' % (int(gt_nums), int(predicted_nums), int(true_predicted_nums),
-                                                                int(false_predicted_nums)))
-    print('rec: %f, prec: %f, errDet:%f' % (recall, precision, false_predicted_nums / predicted_nums))
+    print('gt_num: %d, detection_num: %d, tp: %d, fp: %d, fn: %d' % (int(gt_nums), int(predicted_nums), int(true_predicted_nums),
+                                                                int(false_predicted_nums), fn))
+    print('rec: %f, pre: %f, errDet:%f' % (recall, precision, false_predicted_nums / predicted_nums))
     print('----------------------------------')

@@ -203,11 +203,14 @@ def compute_rec_pre(predicted,
     true_predicted_num = np.sum(tp)
     false_predicted_num = np.sum(fp)
     false_negative_num = np.sum(fn)
-    rec = true_predicted_num / (true_predicted_num + false_negative_num)
-    prec = true_predicted_num / (true_predicted_num + false_predicted_num)
-    print('small tp:%d, fp:%d, fn:%d' % (np.sum(stp), np.sum(sfp), np.sum(sfn)))
-    print('small rec:%f, pre:%f' % (np.sum(stp)/(np.sum(stp) + np.sum(sfn)), np.sum(stp)/(np.sum(stp) + np.sum(sfp))))
-    return rec, prec, true_predicted_num+false_negative_num, len(tmpL), true_predicted_num, false_predicted_num
+    rec = true_predicted_num / (true_predicted_num + false_negative_num) # tp/tp+fn
+    prec = true_predicted_num / (true_predicted_num + false_predicted_num) # tp/tp+fp
+    try:
+        print('small tp:%d, fp:%d, fn:%d' % (np.sum(stp), np.sum(sfp), np.sum(sfn)))
+        print('small rec:%f, pre:%f' % (np.sum(stp)/(np.sum(stp) + np.sum(sfn)), np.sum(stp)/(np.sum(stp) + np.sum(sfp))))
+    except Exception as E:
+        print('small error:', E)
+    return rec, prec, true_predicted_num+false_negative_num, len(tmpL), true_predicted_num, false_predicted_num, false_negative_num
 
 
 if __name__ == '__main__':
@@ -223,12 +226,15 @@ if __name__ == '__main__':
     #         print('not found file:', Head, file)
     # exit(1)
 
-    # gt_path = '../data/banbian_0815'
+    gt_path = '../data/banbian_0815'
     # gt_path = '../data/cemian_0815'
-    gt_path = '../data/zhengmian_0815'
+    # gt_path = '../data/zhengmian_0815'
+    # gt_path = '../data/zhenglian_0820'
+    # gt_path = '../data/celian_0820'
+    # gt_path = '../data/banbian_0820'
 
     resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetSelf_'+gt_path.split('/')[-1 if gt_path[-1] != '/' else -2]+'.txt'
-    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_zheng.txt'
+    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_ban.txt'
     # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetWIDER_val.txt'
 
     # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_FDDB.txt'
@@ -243,15 +249,15 @@ if __name__ == '__main__':
         img_name_list.append(img_name)
 
     image_set = img_name_list
-    ovthresh = 0.7
+    ovthresh = 0.5
 
     recall, precision, gt_nums, predicted_nums, true_predicted_nums, \
-    false_predicted_nums = compute_rec_pre(preR, gt_path, image_set, ovthresh,
+    false_predicted_nums, fn = compute_rec_pre(preR, gt_path, image_set, ovthresh,
                                            dstSize=256. if 'mtcnn' not in resultPath else None,
                                            skipMinLenThresh=32 if 'mtcnn' not in resultPath else None) # , resized=[256, 256])
     print('----------------------------------')
     # print('english word detection test:')
-    print('gt_num: %d, detection_num: %d, tp: %d, fp: %d' % (int(gt_nums), int(predicted_nums), int(true_predicted_nums),
-                                                                int(false_predicted_nums)))
-    print('rec: %f, prec: %f, errDet:%f' % (recall, precision, false_predicted_nums / predicted_nums))
+    print('gt_num: %d, detection_num: %d, tp: %d, fp: %d, fn:%d' % (int(gt_nums), int(predicted_nums), int(true_predicted_nums),
+                                                                int(false_predicted_nums), fn))
+    print('rec: %f, pre: %f, errDet:%f' % (recall, precision, false_predicted_nums / predicted_nums))
     print('----------------------------------')
