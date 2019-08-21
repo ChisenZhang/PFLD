@@ -11,6 +11,12 @@ import os
 import json
 import cv2
 
+testAnchor = False
+
+if testAnchor:
+    from anchors import Anchors
+    anchorsC = Anchors()
+    anchors = anchorsC.get_anchors(fmSizes=[(16, 16), (8, 8)], fmBased=True, imgSize=1)
 
 def parsingR(fileName):
     tmpDict = {}
@@ -87,7 +93,10 @@ def compute_rec_pre(predicted,
     for image_name in image_names:
         # tmpS = image_name+'\t'
         objs = parse_rec(os.path.join(gt_path, image_name + '.json'))
-        tmpImg = cv2.imread(os.path.join(gt_path, img_name+'.jpg'))
+        if not testAnchor:
+            tmpImg = cv2.imread(os.path.join(gt_path, image_name+'.jpg'))
+        else:
+            tmpImg = cv2.imread(os.path.join('C:/Users/17ZY-HPYKFD2/Downloads/dFServer/tmpDetImgs_self_ban0.5', image_name+'.jpg'))
         OSize = tmpImg.shape
         gt = [obj for obj in objs]
         bbox = np.array([x['bbox'] for x in gt])
@@ -115,8 +124,13 @@ def compute_rec_pre(predicted,
         # continue
 
         small = 0
-        for i in range(len(GT_box)):
-            GBox = GT_box[i]
+        for i in range(len(GT_box) if not testAnchor else len(anchors)):#):
+            if testAnchor:
+                GBox = anchors[i].astype(np.int32) # GT_box[i]
+                dstSize = None
+            else:
+                GBox = GT_box[i]
+
             if dstSize:
                 r = dstSize / max(OSize[0], OSize[1])
                 GBox = (np.array(GBox) * r).astype(np.int32)
@@ -162,11 +176,17 @@ def compute_rec_pre(predicted,
                     sfn[d] += 1
             else:
                 if ovmax > ovthresh:
-                    if not gt['det'][jmax]:
-                        tp[d] += 1
-                        gt['det'][jmax] = 1
+                    if testAnchor:
+                        tImg = tmpImg.copy()
+                        cv2.rectangle(tImg, (GBox[0], GBox[1]), (GBox[2], GBox[3]), (0, 0, 255), 2)
+                        cv2.imshow('tImg', tImg)
+                        cv2.waitKey(0)
                     else:
-                        fp[d] += 1
+                        if not gt['det'][jmax]:
+                            tp[d] += 1
+                            gt['det'][jmax] = 1
+                        else:
+                            fp[d] += 1
                 else:
                     fn[d] += 1
         if tp[d] + fp[d] + stp[d] + sfp[d] < len(pb):
@@ -208,6 +228,7 @@ if __name__ == '__main__':
     gt_path = '../data/zhengmian_0815'
 
     resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetSelf_'+gt_path.split('/')[-1 if gt_path[-1] != '/' else -2]+'.txt'
+    # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_zheng.txt'
     # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mobileNetWIDER_val.txt'
 
     # resultPath = 'C:/Users/17ZY-HPYKFD2/Downloads/dFServer/result_mtcnn_FDDB.txt'
@@ -222,7 +243,7 @@ if __name__ == '__main__':
         img_name_list.append(img_name)
 
     image_set = img_name_list
-    ovthresh = 0.5
+    ovthresh = 0.7
 
     recall, precision, gt_nums, predicted_nums, true_predicted_nums, \
     false_predicted_nums = compute_rec_pre(preR, gt_path, image_set, ovthresh,
