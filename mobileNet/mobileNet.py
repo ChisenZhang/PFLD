@@ -330,7 +330,7 @@ class MobileNetV2(object):
             #     s = x
 
             if strides != 1:
-                s = tf.layers.max_pooling2d(x, pool_size=strides, strides=strides)
+                s = tf.layers.max_pooling2d(x, pool_size=strides, padding='same', strides=strides)
             else:
                 s = x
 
