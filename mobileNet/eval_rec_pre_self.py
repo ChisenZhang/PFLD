@@ -96,7 +96,7 @@ def compute_rec_pre(predicted,
         if not testAnchor:
             tmpImg = cv2.imread(os.path.join(gt_path, image_name+'.jpg'))
         else:
-            tmpImg = cv2.imread(os.path.join('C:/Users/17ZY-HPYKFD2/Downloads/dFServer/tmpDetImgs_self_ban0.5', image_name+'.jpg'))
+            tmpImg = cv2.imread(os.path.join('C:/Users/17ZY-HPYKFD2/Downloads/dFServer/tmpDetImgs_self_zheng0.5', image_name+'.jpg'))
         OSize = tmpImg.shape
         gt = [obj for obj in objs]
         bbox = np.array([x['bbox'] for x in gt])

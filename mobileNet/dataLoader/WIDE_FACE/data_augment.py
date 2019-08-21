@@ -123,6 +123,8 @@ def mosaic(selected_image, nsize=3):
 
 def fillDelArea(image, dBoxes):
     for box in dBoxes:
+        if int(box[3]) - int(box[1]) < 2 or int(box[2]) - int(box[1]) < 2:
+            continue
         image_t = image[int(box[1]):int(box[3]), int(box[0]):int(box[2])]
         ave = image_t.mean()
         tmp = np.ones_like(image_t, dtype=np.float32)*ave
