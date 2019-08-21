@@ -103,6 +103,10 @@ class DataService(object):
             labBatch.append(np.array(tmpLal)[:, 0:4].tolist())
 
         tmpBatch = []
+
+        if maxH % 2 != 0:
+            maxH += 1
+
         for tmpImg in imgBatch:
             img = np.pad(tmpImg, ((0, maxH - tmpImg.shape[0]), (0, maxW - tmpImg.shape[1]), (0, 0)),
                            mode='constant')
