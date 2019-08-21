@@ -421,7 +421,7 @@ class MobileNetV2(object):
 
     # 返回loss
     def getTrainLoss(self, sess, imgs, batchShape, gBoxes):
-        anchors = anchorsC.get_anchors(fmSizes=[(self.output1.shape.as_list()[1], self.output1.shape.as_list[2]),
+        anchors = anchorsC.get_anchors(fmSizes=[(self.output1.shape.as_list()[1], self.output1.shape.as_list()[2]),
                                                 (self.output2.shape.as_list()[1], self.output2.shape.as_list()[2])], fmBased=True)
         print('anchors shape:', anchors.shape)
         locs, confs = encode_batch(anchors, gBoxes, 0.3, 0.5)
