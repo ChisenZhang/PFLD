@@ -120,15 +120,15 @@ class MobileNetV2(object):
             output = self.BlazeBlock(output, 32, 1, 'BlazeBlock6', 2, True, 12)
             output = self.BlazeBlock(output, 32, 1, 'BlazeBlock7', 1, True, 16)
             output = self.BlazeBlock(output, 32, 1, 'BlazeBlock8', 1, True, 16)
-            output1 = self.BlazeBlock(output, 48, 1, 'BlazeBlock9', 2, True, 16)
-            output = self.BlazeBlock(output1, 48, 1, 'BlazeBlock10', 1, True, 24)
-            output2 = self.BlazeBlock(output, 64, 1, 'BlazeBlock11', 2, True, 24)
+            self.output1 = self.BlazeBlock(output, 48, 1, 'BlazeBlock9', 2, True, 16)
+            output = self.BlazeBlock(self.output1, 48, 1, 'BlazeBlock10', 1, True, 24)
+            self.output2 = self.BlazeBlock(output, 64, 1, 'BlazeBlock11', 2, True, 24)
             # out1 = self.inceptionBlock(output1)
             # out1, attention1 = self.attentionBlock(out1, scope='attentionBlock1')
-            cls1, reg1 = self.clsAndReg(output1, self.num_classes, 8, scope='clsAndReg1')
+            cls1, reg1 = self.clsAndReg(self.output1, self.num_classes, 8, scope='clsAndReg1')
             # out2 = self.inceptionBlock(output2)
             # out2, attention2 = self.attentionBlock(out2, scope='attentionBlock2')
-            cls2, reg2 = self.clsAndReg(output2, self.num_classes, 24, scope='clsAndReg2')
+            cls2, reg2 = self.clsAndReg(self.output2, self.num_classes, 24, scope='clsAndReg2')
             self.cls = tf.concat((tf.reshape(cls1, [self.batch_size, -1, self.num_classes]),
                                   tf.reshape(cls2, [self.batch_size, -1, self.num_classes])), axis=-2, name='cls')
             # self.cls = tf.reshape(self.cls, [self.batch_size, self.anchorsLen, self.num_classes], name='cls')
@@ -421,8 +421,8 @@ class MobileNetV2(object):
 
     # 返回loss
     def getTrainLoss(self, sess, imgs, batchShape, gBoxes):
-        anchors = anchorsC.get_anchors(fmSizes=[(batchShape[1]//16, batchShape[0]//16),
-                                                (batchShape[1]//32, batchShape[0]//32)], fmBased=True)
+        anchors = anchorsC.get_anchors(fmSizes=[(self.output1.shape.as_list()[1], self.output1.shape.as_list[2]),
+                                                (self.output2.shape.as_list()[1], self.output2.shape.as_list()[2])], fmBased=True)
         print('anchors shape:', anchors.shape)
         locs, confs = encode_batch(anchors, gBoxes, 0.3, 0.5)
         # attention1, attention2 = generateAttentionMap(self.batch_size, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
