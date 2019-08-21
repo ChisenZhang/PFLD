@@ -10,7 +10,7 @@ import tensorflow as tf
 # import time
 from lossComput import faceDetLoss, encode_batch, generateAttentionMap
 from anchors import Anchors
-
+import math
 
 anchorsC = Anchors()
 training_backBone = True
@@ -421,8 +421,9 @@ class MobileNetV2(object):
 
     # 返回loss
     def getTrainLoss(self, sess, imgs, batchShape, gBoxes):
-        anchors = anchorsC.get_anchors(fmSizes=[(self.output1.shape.as_list()[1], self.output1.shape.as_list()[2]),
-                                                (self.output2.shape.as_list()[1], self.output2.shape.as_list()[2])], fmBased=True)
+        print('batchShape:', batchShape)
+        anchors = anchorsC.get_anchors(fmSizes=[(math.ceil(batchShape[1]/16), math.ceil(batchShape[0]/16)),
+                                                (math.ceil(batchShape[1]/32), math.ceil(batchShape[0]/32))], fmBased=True)
         print('anchors shape:', anchors.shape)
         locs, confs = encode_batch(anchors, gBoxes, 0.3, 0.5)
         # attention1, attention2 = generateAttentionMap(self.batch_size, shapes=[(16, 16), (8, 8)], gBoxes=gBoxes)
