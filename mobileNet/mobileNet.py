@@ -153,7 +153,7 @@ class MobileNetV2(object):
             # self.lr = tf.train.polynomial_decay(learning_rate=learning_rate, global_step=self.GStep,
             #                                decay_steps=decay_step, end_learning_rate=1e-8,
             #                                power=0.5, cycle=True)
-            
+
             tf.summary.scalar('GSTEP', self.GStep)
             tf.summary.scalar('LR', self.lr)
 

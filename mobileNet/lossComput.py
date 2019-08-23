@@ -381,7 +381,7 @@ def faceDetLoss(plogits, pBoxes, locs_true, confs_true, batch_size=32, pAttentio
         pos_ids = tf.cast(positive_check, tf.bool)
         n_pos = tf.maximum(tf.reduce_sum(positive_check), 1)
 
-        l1_loss = tf.losses.huber_loss(loc_true, loc_preds, delta=1.35, reduction=tf.losses.Reduction.NONE)  # Smoothed L1 loss
+        l1_loss = tf.losses.huber_loss(loc_true, loc_preds, reduction=tf.losses.Reduction.NONE)  # Smoothed L1 loss
         l1_loss = positive_check * tf.reduce_sum(l1_loss, axis=-1) # Zero out L1 loss for negative boxes
 
         # cls_loss = focal_loss(conf_true_oh, conf_preds)

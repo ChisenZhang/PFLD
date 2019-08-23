@@ -96,16 +96,17 @@ def main(dataPath=None):
                     r = WIDTH_DES / max(frame.shape[1], frame.shape[0])
                     # dim_des = (int(WIDTH_DES), int(frame.shape[1] * r))
                     # frame = cv2.resize(frame, (WIDTH_DES, HEIGHT_DES))
+                    bt = time.time()
                     frame = cv2.resize(frame, (0, 0), fx=r, fy=r)  # (WIDTH_DES, HEIGHT_DES))
                     frame = np.pad(frame, ((0, HEIGHT_DES - frame.shape[0]), (0, WIDTH_DES - frame.shape[1]), (0, 0)),
                                    mode='constant')
                     tmp_frame = frame / 255.
-                    bt = time.time()
                     pred_locs, pred_confs = sess.run([output_tensor_locs, output_tensor_probs],
                                                      feed_dict={input_image_tensor: np.expand_dims(tmp_frame, axis=0)})
-                    totalT = time.time() - bt
                     pred_boxes = decode_batch(boxes_vec, pred_locs, pred_confs, min_conf=0.5)[0]
                     pred_boxes[pred_boxes < 0] = 0
+                    totalT = time.time() - bt
+
                     # pred_boxes[:, [0, 2]][pred_boxes[:, [0, 2]] > WIDTH_DES] = WIDTH_DES
                     # pred_boxes[:, [1, 3]][pred_boxes[:, [1, 3]] > HEIGHT_DES] = HEIGHT_DES
                     h, w = HEIGHT_DES, WIDTH_DES

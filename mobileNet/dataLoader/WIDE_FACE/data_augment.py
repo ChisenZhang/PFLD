@@ -141,13 +141,18 @@ def _cropFace(image, boxes, labels, img_dim):
         else:
             scale = random.uniform(0.2, 1.)
 
-        tw = int(scale * min(h, w))
-        th = tw
+        if random.uniform(0, 1) <= 0.5:
+            tw = int(scale * min(h, w))
+            th = tw
+        else:
+            tw = int(scale * w)
+            th = int(scale * h)
 
         # 过小
-        if tw < img_dim//4:
+        if tw < img_dim//4 or th < img_dim//4:
             continue
-        r = img_dim / float(tw)
+
+        r = img_dim / max(tw, th)
 
         if tw == w:
             l = 0
