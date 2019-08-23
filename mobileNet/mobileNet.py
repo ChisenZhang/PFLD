@@ -139,9 +139,15 @@ class MobileNetV2(object):
             # self.drawImage = tf.image.draw_bounding_boxes(self.input, self.boundBoxes)
             # tf.summary.image("input_img", self.input, max_outputs=6)
 
+            # 学习率区间指定
+            boundaries = [60000, 80000, 100000]
+            learning_rates = [1e-2, 1e-3, 1e-4, 1e-4]
+            self.lr = tf.train.piecewise_constant(self.GStep, boundaries=boundaries, values=learning_rates)
+
+
             # 定义指数下降学习率
-            self.lr = tf.train.exponential_decay(learning_rate=0.01, global_step=self.GStep,
-                                                       decay_steps=10000, decay_rate=0.99, staircase=True)
+            # self.lr = tf.train.exponential_decay(learning_rate=0.01, global_step=self.GStep,
+            #                                            decay_steps=10000, decay_rate=0.99, staircase=True)
 
             # 多项式衰减 往复
             # self.lr = tf.train.polynomial_decay(learning_rate=learning_rate, global_step=self.GStep,
