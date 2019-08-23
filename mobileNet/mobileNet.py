@@ -140,7 +140,7 @@ class MobileNetV2(object):
             # tf.summary.image("input_img", self.input, max_outputs=6)
 
             # 学习率区间指定
-            boundaries = [60000, 80000, 100000]
+            boundaries = [800, 40000, 80000]
             learning_rates = [1e-2, 1e-3, 1e-4, 1e-4]
             self.lr = tf.train.piecewise_constant(self.GStep, boundaries=boundaries, values=learning_rates)
 
@@ -153,7 +153,8 @@ class MobileNetV2(object):
             # self.lr = tf.train.polynomial_decay(learning_rate=learning_rate, global_step=self.GStep,
             #                                decay_steps=decay_step, end_learning_rate=1e-8,
             #                                power=0.5, cycle=True)
-
+            
+            tf.summary.scalar('GSTEP', self.GStep)
             tf.summary.scalar('LR', self.lr)
 
             # L1_loss, cls_loss, attLoss = faceDetLoss(self.cls, self.reg, batch_size=self.batch_size, locs_true=self.target_locs,
